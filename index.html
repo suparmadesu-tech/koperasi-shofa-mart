@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Katalog Koperasi — Cek Harga</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.json" />
+<meta name="theme-color" content="#0E6E5A" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Katalog Koperasi" />
+
+<!-- Tailwind CSS (CDN) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Alpine.js (CDN) -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- Fuse.js (CDN) — fuzzy search client-side -->
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+
+<!-- Supabase JS client (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- html5-qrcode (CDN) — barcode/QR scanner via kamera -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<style>
+  :root{
+    --bg:            #F5F6F1;
+    --surface:       #FFFFFF;
+    --surface-sunken:#EEF1EC;
+    --ink:           #1B231F;
+    --ink-muted:     #5C6B64;
+    --border:        #DDE3DC;
+    --primary:       #0E6E5A;
+    --primary-dark:  #0A4F41;
+    --primary-tint:  #E4F0EC;
+    --accent:        #B4530A;
+    --accent-tint:   #F7E9DC;
+    --online:        #1E9E5A;
+    --offline:       #B45309;
+  }
+
+  * { -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  /* Hide scrollbar on the quick-access row but keep it scrollable */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  [x-cloak] { display: none !important; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+  .dot-online { animation: pulse-dot 2.4s ease-in-out infinite; }
+
+  /* Scanner overlay: kotak video dari html5-qrcode dibuat mengisi container, rounded */
+  #qr-reader { width: 100%; border-radius: 16px; overflow: hidden; background: #000; }
+  #qr-reader video { width: 100% !important; border-radius: 16px; object-fit: cover; }
+  #qr-reader__scan_region { border-radius: 16px !important; }
+  #qr-reader__dashboard { display: none !important; } /* sembunyikan UI bawaan html5-qrcode, kita pakai UI sendiri */
+</style>
+</head>
+
+<body class="min-h-screen" x-data="kasirApp()" x-init="init()">
+
+  <!-- =========================================================
+       HEADER — nama app + status koneksi
+  ========================================================== -->
+  <header class="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--border)]">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-lg bg-[var(--primary)] flex items-center justify-center shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+        </div>
+        <div class="leading-tight">
+          <p class="font-semibold text-[15px] text-[var(--ink)]">Katalog Koperasi</p>
+          <p class="text-[11px] text-[var(--ink-muted)]" x-text="lastSyncedLabel"></p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full"
+           :class="online ? 'bg-[var(--primary-tint)]' : 'bg-[var(--accent-tint)]'">
+        <span class="w-2 h-2 rounded-full"
+              :class="online ? 'bg-[var(--online)] dot-online' : 'bg-[var(--offline)]'"></span>
+        <span class="text-[11px] font-medium"
+              :class="online ? 'text-[var(--primary-dark)]' : 'text-[var(--offline)]'"
+              x-text="online ? 'Online' : 'Offline'"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-md mx-auto px-4 pb-10">
+
+    <!-- =========================================================
+         SEARCH BAR — auto-focus, tombol kamera di samping
+    ========================================================== -->
+    <div class="pt-4 pb-2">
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1">
+          <svg class="absolute left-3.5 top-1/2 -translate-y-1/2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C6B64" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input
+            type="text"
+            inputmode="search"
+            x-ref="searchInput"
+            x-model="query"
+            @input.debounce.150ms="runSearch()"
+            placeholder="Cari nama barang…"
+            class="w-full h-13 pl-11 pr-9 py-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[15px] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
+          />
+          <button
+            x-show="query.length > 0"
+            x-cloak
+            @click="clearSearch()"
+            class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center"
+            aria-label="Hapus pencarian"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B64" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <button
+          @click="scanBarcode()"
+          class="w-13 h-13 shrink-0 rounded-xl bg-[var(--primary)] flex items-center justify-center active:scale-95 transition-transform"
+          style="width:52px;height:52px;"
+          aria-label="Scan barcode"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        </button>
+      </div>
+
+      <!-- Toast kecil untuk notifikasi terkait scan (mis. barcode tidak ditemukan) -->
+      <p x-show="scanNotice" x-cloak x-transition class="mt-2 text-[12px] text-[var(--accent)] bg-[var(--accent-tint)] rounded-lg px-3 py-2" x-text="scanNotice"></p>
+    </div>
+
+    <!-- =========================================================
+         QUICK ACCESS — hanya tampil saat tidak sedang mencari
+    ========================================================== -->
+    <section x-show="!isSearchActive" x-cloak class="pt-2 pb-1">
+      <p class="text-[13px] font-medium text-[var(--ink-muted)] mb-2.5 px-0.5">Akses Cepat — Barang Tanpa Barcode</p>
+
+      <template x-if="loading">
+        <div class="grid grid-cols-3 gap-2.5">
+          <template x-for="i in 6" :key="i">
+            <div class="h-20 rounded-xl bg-[var(--surface-sunken)] animate-pulse"></div>
+          </template>
+        </div>
+      </template>
+
+      <div x-show="!loading" class="grid grid-cols-3 gap-2.5">
+        <template x-for="cat in quickAccessCategories" :key="cat.id">
+          <button
+            @click="selectCategory(cat)"
+            class="h-20 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-colors"
+            :class="selectedCategory && selectedCategory.id === cat.id
+              ? 'bg-[var(--primary)] border-[var(--primary)]'
+              : 'bg-[var(--surface)] border-[var(--border)] active:bg-[var(--surface-sunken)]'"
+          >
+            <span x-html="getIcon(cat.icon, selectedCategory && selectedCategory.id === cat.id)"></span>
+            <span class="text-[11.5px] font-medium leading-tight text-center px-1"
+                  :class="selectedCategory && selectedCategory.id === cat.id ? 'text-white' : 'text-[var(--ink)]'"
+                  x-text="cat.name"></span>
+          </button>
+        </template>
+      </div>
+
+      <div x-show="selectedCategory" x-cloak class="mt-2.5">
+        <button @click="clearCategory()" class="text-[12.5px] font-medium text-[var(--primary-dark)] flex items-center gap-1">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+          Tutup filter kategori
+        </button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         HASIL PENCARIAN
+    ========================================================== -->
+    <section class="pt-3">
+      <div x-show="isSearchActive" x-cloak class="flex items-center justify-between mb-2.5 px-0.5">
+        <p class="text-[13px] font-medium text-[var(--ink-muted)]" x-text="resultsLabel"></p>
+      </div>
+
+      <!-- Loading state -->
+      <template x-if="loading">
+        <div class="space-y-2.5">
+          <template x-for="i in 3" :key="i">
+            <div class="h-28 rounded-xl bg-[var(--surface-sunken)] animate-pulse"></div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Empty: belum ada pencarian & tidak ada filter kategori -->
+      <div x-show="!loading && !isSearchActive" x-cloak class="text-center py-10 text-[var(--ink-muted)]">
+        <p class="text-[13.5px]">Ketik nama barang di atas, atau pilih kategori Akses Cepat.</p>
+      </div>
+
+      <!-- Empty: hasil kosong -->
+      <div x-show="!loading && isSearchActive && results.length === 0" x-cloak class="text-center py-10">
+        <p class="text-[14px] font-medium text-[var(--ink)]">Barang tidak ditemukan</p>
+        <p class="text-[13px] text-[var(--ink-muted)] mt-1">Coba kata kunci lain atau periksa ejaan.</p>
+      </div>
+
+      <!-- Result cards -->
+      <div class="space-y-2.5">
+        <template x-for="p in results" :key="p.id">
+          <article class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <h3 class="text-[15.5px] font-semibold text-[var(--ink)] leading-snug" x-text="p.name"></h3>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  <span class="text-[11.5px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)] text-[var(--ink-muted)]" x-text="p.category"></span>
+                  <span x-show="p.location_shelf" class="text-[11.5px] text-[var(--ink-muted)] flex items-center gap-1">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11.8A8 8 0 0 0 4 10.2C4 17.5 12 22 12 22Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    <span x-text="p.location_shelf"></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Semua satuan & harga sekaligus -->
+            <div class="mt-3 divide-y divide-[var(--border)] border-t border-[var(--border)]">
+              <template x-for="row in p.prices" :key="row.unit">
+                <div class="flex items-center justify-between py-2">
+                  <span class="text-[13px] text-[var(--ink-muted)] capitalize" x-text="'per ' + row.unit"></span>
+                  <div class="text-right">
+                    <p class="text-[15px] font-bold text-[var(--accent)]" x-text="formatRupiah(row.price_public)"></p>
+                    <p x-show="row.price_member !== null && row.price_member !== undefined && row.price_member !== row.price_public"
+                       class="text-[11.5px] text-[var(--primary-dark)] font-medium"
+                       x-text="'Anggota: ' + formatRupiah(row.price_member)"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <p x-show="p.notes" class="mt-2 text-[12px] text-[var(--ink-muted)] italic" x-text="p.notes"></p>
+          </article>
+        </template>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       SCANNER OVERLAY — modal full-screen untuk scan barcode
+  ========================================================== -->
+  <div x-show="scannerOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 bg-black/95 flex flex-col">
+
+    <!-- Header overlay: judul + tombol tutup -->
+    <div class="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
+      <p class="text-white font-medium text-[15px]">Scan Barcode</p>
+      <button @click="closeScanner()" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center" aria-label="Tutup scanner">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Area kamera -->
+    <div class="flex-1 flex flex-col items-center justify-center px-5">
+
+      <!-- State: starting / active kamera -->
+      <div x-show="scannerState === 'starting' || scannerState === 'active'" class="w-full max-w-sm">
+        <div id="qr-reader"></div>
+        <p x-show="scannerState === 'starting'" class="text-center text-white/60 text-[13px] mt-4">Membuka kamera…</p>
+        <p x-show="scannerState === 'active'" class="text-center text-white/60 text-[13px] mt-4">Arahkan kamera ke barcode produk</p>
+      </div>
+
+      <!-- State: kamera gagal/diblokir (fallback iOS Safari, dsb) -->
+      <div x-show="scannerState === 'camera-error'" x-cloak class="w-full max-w-xs text-center">
+        <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M9.5 4h5l1.5 2H19a2 2 0 0 1 2 2v9.5"/><path d="M20 20H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h.5"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </div>
+        <p class="text-white font-medium text-[15px]">Kamera tidak bisa diakses</p>
+        <p class="text-white/60 text-[13px] mt-1.5 leading-relaxed">
+          Hal ini sering terjadi di iOS Safari atau saat app dibuka lewat "Add to Home Screen". Kamu tetap bisa cari barang lewat nama.
+        </p>
+        <button @click="goToManualSearch()" class="mt-5 w-full py-3 rounded-xl bg-white text-[var(--primary-dark)] font-semibold text-[14px]">
+          Gunakan Pencarian Teks
+        </button>
+        <button @click="startCamera()" class="mt-2.5 w-full py-3 rounded-xl bg-white/10 text-white font-medium text-[13.5px]">
+          Coba Lagi
+        </button>
+      </div>
+
+      <!-- State: barcode terscan tapi tidak ditemukan di database -->
+      <div x-show="scannerState === 'not-found'" x-cloak class="w-full max-w-xs text-center">
+        <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M14 9v2M14 15v0M17 9v6"/></svg>
+        </div>
+        <p class="text-white font-medium text-[15px]">Barang tidak ditemukan</p>
+        <p class="text-white/60 text-[13px] mt-1.5 leading-relaxed">
+          Barcode <span class="text-white font-mono" x-text="lastScannedBarcode"></span> tidak terdaftar. Cari manual via nama produk?
+        </p>
+        <button @click="goToManualSearch()" class="mt-5 w-full py-3 rounded-xl bg-white text-[var(--primary-dark)] font-semibold text-[14px]">
+          Cari Manual
+        </button>
+        <button @click="resumeScanning()" class="mt-2.5 w-full py-3 rounded-xl bg-white/10 text-white font-medium text-[13.5px]">
+          Scan Lagi
+        </button>
+      </div>
+    </div>
+
+    <!-- Tombol batal — selalu terlihat di bawah -->
+    <div class="px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
+      <button @click="closeScanner()" class="w-full py-3 rounded-xl bg-white/10 text-white font-medium text-[13.5px]">
+        Batal
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // =====================================================================
+    // KONFIGURASI SUPABASE — GANTI dengan URL & anon key project kamu
+    // (Project Settings → API di dashboard Supabase)
+    // =====================================================================
+    const SUPABASE_URL = "https://mattbitglsoaassjmyhs.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_EKQhuybMHQGSp-Yk2tie7Q_WWnZV9iO";
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const CACHE_KEY = "koperasi_katalog_cache_v1";
+
+    // Ikon inline (statis, bukan dari DB) — dicocokkan dengan field `icon` di tabel categories
+    const ICONS = {
+      "flame": '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.28-.53-2.34-1.24-3.32C11.5 10 11 9 11 7.5c0 0-3 2-3 5.5 0 .5.1.98.3 1.5Z"/><path d="M12.5 2c1 2 2 4.5 2 6.5A4.5 4.5 0 0 1 10 13c0-2 1.5-3 1.5-5.5S9 3 12.5 2Z"/>',
+      "candy": '<path d="m10 15-3.5 3.5a2.12 2.12 0 1 1-3-3L7 12"/><path d="m14 9 3.5-3.5a2.12 2.12 0 1 1 3 3L17 12"/><rect x="7" y="7" width="10" height="10" rx="2" transform="rotate(45 12 12)"/>',
+      "ice-cream-cone": '<path d="M12 17c-2 0-3.5-1.6-3.5-3.5S10 6 12 3c2 3 3.5 6.6 3.5 10.5S14 17 12 17Z"/><path d="m10 16-1.5 5.5 3.5-2 3.5 2L14 16"/>',
+      "cigarette": '<path d="M2 12h13v3H2z"/><path d="M15 12h5a2 2 0 0 1 2 2v-1a2 2 0 0 0-2-2h-5v3Z"/><path d="M6 8c1 1 1 2.5 0 3.5M9 8c1 1 1 2.5 0 3.5"/>',
+      "cup-soda": '<path d="M8 2h8l-1 4H9L8 2Z"/><path d="M7 6h10l-1.2 14.2a2 2 0 0 1-2 1.8H10.2a2 2 0 0 1-2-1.8L7 6Z"/><path d="M7.5 11h9"/>',
+      "shopping-basket": '<path d="m5 11 4-6"/><path d="m19 11-4-6"/><path d="M2 11h20l-1.6 8.2a2 2 0 0 1-2 1.8H5.6a2 2 0 0 1-2-1.8L2 11Z"/><path d="M12 16v-3"/>'
+    };
+    const DEFAULT_ICON = '<circle cx="12" cy="12" r="9"/>';
+
+    function kasirApp() {
+      return {
+        // ---- state ----
+        loading: true,
+        online: navigator.onLine,
+        lastSynced: null,
+        query: "",
+        allProducts: [],
+        allCategories: [],
+        selectedCategory: null,
+        results: [],
+        fuse: null,
+        scanNotice: "",
+        isScanResult: false,
+
+        // ---- scanner state ----
+        scannerOpen: false,
+        scannerState: "idle", // idle | starting | active | camera-error | not-found
+        html5QrCode: null,
+        isProcessingScan: false,
+        lastScannedBarcode: "",
+
+        // ---- lifecycle ----
+        init() {
+          this.$nextTick(() => this.$refs.searchInput.focus());
+
+          window.addEventListener("online", () => { this.online = true; this.loadData(); });
+          window.addEventListener("offline", () => { this.online = false; });
+
+          this.loadData();
+        },
+
+        // ---- data loading ----
+        async loadData() {
+          try {
+            const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await Promise.all([
+              supabaseClient
+                .from("products")
+                .select("id,name,alias,barcode,category,prices,location_shelf,stock,notes,is_active")
+                .eq("is_active", true),
+              supabaseClient
+                .from("categories")
+                .select("id,name,icon,is_quick_access,sort_order")
+                .order("sort_order", { ascending: true }),
+            ]);
+
+            if (pErr) throw pErr;
+            if (cErr) throw cErr;
+
+            this.allProducts = products || [];
+            this.allCategories = categories || [];
+            this.lastSynced = new Date();
+
+            this.buildFuseIndex();
+            this.cacheData();
+            this.loading = false;
+            this.runSearch();
+          } catch (err) {
+            console.error("Gagal memuat data dari Supabase:", err);
+            const usedCache = this.loadFromCache();
+            if (!usedCache) {
+              this.scanNotice = "Gagal memuat data. Periksa konfigurasi Supabase & koneksi internet.";
+            }
+            this.loading = false;
+          }
+        },
+
+        cacheData() {
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+              products: this.allProducts,
+              categories: this.allCategories,
+              syncedAt: this.lastSynced.toISOString(),
+            }));
+          } catch (e) { /* localStorage penuh/tidak tersedia — abaikan */ }
+        },
+
+        loadFromCache() {
+          try {
+            const raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return false;
+            const cached = JSON.parse(raw);
+            this.allProducts = cached.products || [];
+            this.allCategories = cached.categories || [];
+            this.lastSynced = cached.syncedAt ? new Date(cached.syncedAt) : null;
+            this.buildFuseIndex();
+            this.runSearch();
+            return true;
+          } catch (e) {
+            return false;
+          }
+        },
+
+        buildFuseIndex() {
+          this.fuse = new Fuse(this.allProducts, {
+            keys: [
+              { name: "name", weight: 0.7 },
+              { name: "alias", weight: 0.3 },
+            ],
+            threshold: 0.35,
+            ignoreLocation: true,
+            minMatchCharLength: 2,
+          });
+        },
+
+        // ---- search & filter ----
+        runSearch() {
+          this.isScanResult = false;
+          if (this.query.trim().length > 0) {
+            this.selectedCategory = null;
+            this.results = this.fuse ? this.fuse.search(this.query.trim()).map(r => r.item).slice(0, 30) : [];
+          } else if (this.selectedCategory) {
+            this.results = this.allProducts.filter(p => p.category === this.selectedCategory.name);
+          } else {
+            this.results = [];
+          }
+        },
+
+        selectCategory(cat) {
+          if (this.selectedCategory && this.selectedCategory.id === cat.id) {
+            this.clearCategory();
+            return;
+          }
+          this.query = "";
+          this.selectedCategory = cat;
+          this.runSearch();
+        },
+
+        clearCategory() {
+          this.selectedCategory = null;
+          this.runSearch();
+        },
+
+        clearSearch() {
+          this.query = "";
+          this.runSearch();
+          this.$refs.searchInput.focus();
+        },
+
+        // ---- barcode scanner (Fase 3) ----
+        scanBarcode() {
+          this.scannerOpen = true;
+          this.scannerState = "starting";
+          this.isProcessingScan = false;
+          // beri waktu DOM merender #qr-reader sebelum html5-qrcode di-mount
+          this.$nextTick(() => this.startCamera());
+        },
+
+        startCamera() {
+          this.scannerState = "starting";
+
+          if (typeof Html5Qrcode === "undefined") {
+            console.error("Library html5-qrcode gagal dimuat.");
+            this.scannerState = "camera-error";
+            return;
+          }
+
+          // Kalau instance lama masih ada (mis. dari percobaan sebelumnya), bersihkan dulu
+          const mountScanner = () => {
+            this.html5QrCode = new Html5Qrcode("qr-reader", { verbose: false });
+
+            const config = {
+              fps: 10,
+              qrbox: { width: 250, height: 150 }, // kotak lebar cocok untuk barcode 1D (EAN/UPC) & QR
+              aspectRatio: 1.4,
+            };
+
+            this.html5QrCode
+              .start(
+                { facingMode: "environment" }, // prioritas kamera belakang
+                config,
+                (decodedText) => this.handleScanSuccess(decodedText),
+                () => { /* frame tanpa barcode terdeteksi — abaikan, ini dipanggil terus-menerus */ }
+              )
+              .then(() => {
+                this.scannerState = "active";
+              })
+              .catch((err) => {
+                // Kondisi umum: permission ditolak, getUserMedia dibatasi (iOS Safari / PWA), tidak ada kamera, dsb.
+                console.error("Gagal membuka kamera:", err);
+                this.scannerState = "camera-error";
+              });
+          };
+
+          if (this.html5QrCode) {
+            this.html5QrCode
+              .stop()
+              .catch(() => {})
+              .finally(() => {
+                this.html5QrCode = null;
+                mountScanner();
+              });
+          } else {
+            mountScanner();
+          }
+        },
+
+        async handleScanSuccess(decodedText) {
+          if (this.isProcessingScan) return; // cegah callback ganda saat masih memproses hasil sebelumnya
+          this.isProcessingScan = true;
+
+          // Jeda sejenak agar kamera tidak terus memindai selagi kita mencari produk
+          if (this.html5QrCode) {
+            try { await this.html5QrCode.pause(true); } catch (e) { /* abaikan */ }
+          }
+
+          this.playBeep();
+
+          const barcode = decodedText.trim();
+          const product = this.allProducts.find((p) => p.barcode === barcode);
+
+          if (product) {
+            this.showScannedProduct(product);
+          } else {
+            this.lastScannedBarcode = barcode;
+            this.scannerState = "not-found";
+            this.isProcessingScan = false;
+          }
+        },
+
+        showScannedProduct(product) {
+          this.query = "";
+          this.selectedCategory = null;
+          this.isScanResult = true;
+          this.results = [product];
+          this.closeScanner();
+        },
+
+        resumeScanning() {
+          this.scannerState = "active";
+          this.isProcessingScan = false;
+          if (this.html5QrCode) {
+            try { this.html5QrCode.resume(); } catch (e) { this.startCamera(); }
+          } else {
+            this.startCamera();
+          }
+        },
+
+        goToManualSearch() {
+          const barcode = this.lastScannedBarcode;
+          this.closeScanner();
+          this.$nextTick(() => {
+            this.$refs.searchInput.focus();
+            if (barcode) {
+              this.scanNotice = `Barcode ${barcode} tidak terdaftar. Silakan cari manual via nama produk.`;
+              setTimeout(() => { this.scanNotice = ""; }, 4500);
+            }
+          });
+        },
+
+        closeScanner() {
+          this.scannerOpen = false;
+          this.scannerState = "idle";
+          this.isProcessingScan = false;
+
+          if (this.html5QrCode) {
+            this.html5QrCode
+              .stop()
+              .catch(() => {})
+              .finally(() => {
+                this.html5QrCode.clear();
+                this.html5QrCode = null;
+              });
+          }
+        },
+
+        playBeep() {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = 1200;
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+            oscillator.connect(gain);
+            gain.connect(ctx.destination);
+            oscillator.start();
+            oscillator.stop(ctx.currentTime + 0.15);
+          } catch (e) { /* Web Audio tidak tersedia — abaikan, beep bersifat opsional */ }
+        },
+
+        // ---- helpers ----
+        getIcon(iconName, isActive) {
+          const path = ICONS[iconName] || DEFAULT_ICON;
+          const stroke = isActive ? "white" : "var(--primary)";
+          return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+        },
+
+        formatRupiah(value) {
+          if (value === null || value === undefined) return "-";
+          return new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+          }).format(value);
+        },
+
+        get quickAccessCategories() {
+          return this.allCategories.filter(c => c.is_quick_access);
+        },
+
+        get isSearchActive() {
+          return this.query.trim().length > 0 || this.selectedCategory !== null || this.isScanResult;
+        },
+
+        get resultsLabel() {
+          if (this.isScanResult) {
+            return "Hasil scan barcode";
+          }
+          if (this.selectedCategory) {
+            return `${this.results.length} barang di "${this.selectedCategory.name}"`;
+          }
+          return `${this.results.length} hasil untuk "${this.query}"`;
+        },
+
+        get lastSyncedLabel() {
+          if (!this.lastSynced) return "Belum tersinkron";
+          const time = this.lastSynced.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+          return `Data terakhir diperbarui: ${time}`;
+        },
+      };
+    }
+
+    // ---- Registrasi Service Worker (PWA offline caching) ----
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((err) => {
+          console.warn("Registrasi service worker gagal:", err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

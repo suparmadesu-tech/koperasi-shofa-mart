@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — Katalog Koperasi</title>
+
+<!-- Tailwind CSS (CDN) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Alpine.js (CDN) -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- Supabase JS client (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- PapaParse (CDN) — parsing & generate CSV untuk import/export massal -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+  :root{
+    --bg:            #F5F6F1;
+    --surface:       #FFFFFF;
+    --surface-sunken:#EEF1EC;
+    --ink:           #1B231F;
+    --ink-muted:     #5C6B64;
+    --border:        #DDE3DC;
+    --primary:       #0E6E5A;
+    --primary-dark:  #0A4F41;
+    --primary-tint:  #E4F0EC;
+    --accent:        #B4530A;
+    --accent-tint:   #F7E9DC;
+    --danger:        #B42318;
+    --danger-tint:   #FBEAE8;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  [x-cloak] { display: none !important; }
+
+  table { border-collapse: collapse; }
+  .admin-input {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13.5px;
+  }
+  .admin-input:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); border-color: transparent; }
+  .admin-label { font-size: 12.5px; font-weight: 500; color: var(--ink-muted); margin-bottom: 0.3rem; display: block; }
+</style>
+</head>
+
+<body class="min-h-screen" x-data="adminApp()" x-init="init()">
+
+  <!-- =========================================================
+       LOGIN VIEW
+  ========================================================== -->
+  <div x-show="!session" x-cloak class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-sm">
+      <div class="text-center mb-7">
+        <div class="w-14 h-14 rounded-2xl bg-[var(--primary)] mx-auto flex items-center justify-center mb-3">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+        </div>
+        <h1 class="text-[19px] font-semibold text-[var(--ink)]">Admin Katalog Koperasi</h1>
+        <p class="text-[13.5px] text-[var(--ink-muted)] mt-1">Masuk untuk mengelola data barang & harga</p>
+      </div>
+
+      <form @submit.prevent="login()" class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 space-y-3.5">
+        <div>
+          <label class="admin-label">Email</label>
+          <input type="email" x-model="loginEmail" required autocomplete="username" class="admin-input" placeholder="admin@koperasi.id" />
+        </div>
+        <div>
+          <label class="admin-label">Password</label>
+          <input type="password" x-model="loginPassword" required autocomplete="current-password" class="admin-input" placeholder="••••••••" />
+        </div>
+
+        <p x-show="loginError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="loginError"></p>
+
+        <button type="submit" :disabled="loginLoading"
+                class="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white font-semibold text-[14px] disabled:opacity-60">
+          <span x-show="!loginLoading">Masuk</span>
+          <span x-show="loginLoading" x-cloak>Memproses…</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       DASHBOARD VIEW
+  ========================================================== -->
+  <div x-show="session" x-cloak>
+
+    <header class="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--border)]">
+      <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-[var(--primary)] flex items-center justify-center shrink-0">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+          </div>
+          <p class="font-semibold text-[14.5px]">Admin — Katalog Koperasi</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-[12.5px] text-[var(--ink-muted)] hidden sm:inline" x-text="session?.user?.email"></span>
+          <button @click="logout()" class="text-[12.5px] font-medium px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--surface-sunken)]">Keluar</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-5 py-5">
+
+      <!-- Toolbar -->
+      <div class="flex flex-wrap items-center gap-2.5 mb-4">
+        <input
+          type="text"
+          x-model="search"
+          @input.debounce.200ms="applyFilters()"
+          placeholder="Cari nama, alias, atau barcode…"
+          class="admin-input flex-1 min-w-[200px]"
+        />
+        <select x-model="filterCategory" @change="applyFilters()" class="admin-input w-auto">
+          <option value="">Semua Kategori</option>
+          <template x-for="cat in allCategories" :key="cat.id">
+            <option :value="cat.name" x-text="cat.name"></option>
+          </template>
+        </select>
+        <select x-model="filterStatus" @change="applyFilters()" class="admin-input w-auto">
+          <option value="">Semua Status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+        </select>
+
+        <div class="flex-1"></div>
+
+        <button @click="openAddModal()" class="px-3.5 py-2 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold">
+          + Tambah Produk
+        </button>
+        <button @click="$refs.csvFileInput.click()" class="px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] font-medium">
+          Import CSV
+        </button>
+        <input type="file" x-ref="csvFileInput" accept=".csv" class="hidden" @change="handleCsvFile($event)" />
+        <button @click="exportCsv()" class="px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] font-medium">
+          Export CSV
+        </button>
+        <button @click="downloadTemplate()" class="text-[12px] text-[var(--primary-dark)] underline underline-offset-2">
+          Unduh Template CSV
+        </button>
+      </div>
+
+      <!-- Table -->
+      <div class="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--surface)]">
+        <div class="overflow-x-auto">
+          <table class="w-full text-[13px]">
+            <thead>
+              <tr class="bg-[var(--surface-sunken)] text-left text-[11.5px] uppercase tracking-wide text-[var(--ink-muted)]">
+                <th class="px-4 py-2.5 font-medium">Nama</th>
+                <th class="px-4 py-2.5 font-medium">Kategori</th>
+                <th class="px-4 py-2.5 font-medium">Barcode</th>
+                <th class="px-4 py-2.5 font-medium">Satuan & Harga</th>
+                <th class="px-4 py-2.5 font-medium">Rak</th>
+                <th class="px-4 py-2.5 font-medium">Stok</th>
+                <th class="px-4 py-2.5 font-medium">Status</th>
+                <th class="px-4 py-2.5 font-medium">Diperbarui</th>
+                <th class="px-4 py-2.5 font-medium">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-if="loading">
+                <tr><td colspan="9" class="px-4 py-8 text-center text-[var(--ink-muted)]">Memuat data…</td></tr>
+              </template>
+
+              <template x-if="!loading && pagedProducts.length === 0">
+                <tr><td colspan="9" class="px-4 py-8 text-center text-[var(--ink-muted)]">Tidak ada produk yang cocok.</td></tr>
+              </template>
+
+              <template x-for="p in pagedProducts" :key="p.id">
+                <tr class="border-t border-[var(--border)] align-top" :class="!p.is_active && 'opacity-55'">
+                  <td class="px-4 py-2.5">
+                    <p class="font-medium text-[var(--ink)]" x-text="p.name"></p>
+                    <p x-show="p.alias && p.alias.length" class="text-[11.5px] text-[var(--ink-muted)]" x-text="(p.alias||[]).join(', ')"></p>
+                  </td>
+                  <td class="px-4 py-2.5">
+                    <span class="text-[11.5px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)]" x-text="p.category"></span>
+                  </td>
+                  <td class="px-4 py-2.5 font-mono text-[12px]" x-text="p.barcode || '-'"></td>
+                  <td class="px-4 py-2.5">
+                    <template x-for="row in p.prices" :key="row.unit">
+                      <div class="whitespace-nowrap">
+                        <span class="text-[var(--ink-muted)]" x-text="'per ' + row.unit + ': '"></span>
+                        <span class="font-medium" x-text="formatRupiah(row.price_public)"></span>
+                        <span x-show="row.price_member !== row.price_public" class="text-[11px] text-[var(--primary-dark)]" x-text="' (Ang: ' + formatRupiah(row.price_member) + ')'"></span>
+                      </div>
+                    </template>
+                  </td>
+                  <td class="px-4 py-2.5" x-text="p.location_shelf || '-'"></td>
+                  <td class="px-4 py-2.5" x-text="p.stock ?? '-'"></td>
+                  <td class="px-4 py-2.5">
+                    <span class="text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          :class="p.is_active ? 'bg-[var(--primary-tint)] text-[var(--primary-dark)]' : 'bg-[var(--surface-sunken)] text-[var(--ink-muted)]'"
+                          x-text="p.is_active ? 'Aktif' : 'Nonaktif'"></span>
+                  </td>
+                  <td class="px-4 py-2.5 text-[11.5px] text-[var(--ink-muted)]">
+                    <p x-text="formatDate(p.updated_at)"></p>
+                    <p x-show="p.updated_by" x-text="p.updated_by"></p>
+                  </td>
+                  <td class="px-4 py-2.5">
+                    <div class="flex flex-col gap-1.5">
+                      <button @click="openEditModal(p)" class="text-[12px] font-medium text-[var(--primary-dark)]">Edit</button>
+                      <button @click="toggleActive(p)" class="text-[12px] font-medium text-[var(--ink-muted)]" x-text="p.is_active ? 'Nonaktifkan' : 'Aktifkan'"></button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex items-center justify-between mt-3.5 text-[12.5px] text-[var(--ink-muted)]">
+        <p x-text="paginationLabel"></p>
+        <div class="flex items-center gap-2">
+          <button @click="prevPage()" :disabled="page <= 1" class="px-3 py-1.5 rounded-lg border border-[var(--border)] disabled:opacity-40">Sebelumnya</button>
+          <span x-text="`Halaman ${page} / ${totalPages}`"></span>
+          <button @click="nextPage()" :disabled="page >= totalPages" class="px-3 py-1.5 rounded-lg border border-[var(--border)] disabled:opacity-40">Berikutnya</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- =========================================================
+       MODAL: TAMBAH / EDIT PRODUK
+  ========================================================== -->
+  <div x-show="productModalOpen" x-cloak class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
+        <h2 class="text-[15.5px] font-semibold" x-text="editingProduct && editingProduct.id ? 'Edit Produk' : 'Tambah Produk'"></h2>
+        <button @click="closeProductModal()" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form @submit.prevent="saveProduct()" class="px-5 py-4 space-y-3.5" x-show="editingProduct">
+        <div>
+          <label class="admin-label">Nama Produk *</label>
+          <input type="text" x-model="editingProduct.name" required class="admin-input" placeholder="mis. Indomie Goreng" />
+        </div>
+
+        <div>
+          <label class="admin-label">Alias (pisahkan dengan koma)</label>
+          <input type="text" x-model="editingProduct.aliasText" class="admin-input" placeholder="mis. miegor, indomie" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="admin-label">Barcode (opsional)</label>
+            <input type="text" x-model="editingProduct.barcode" class="admin-input" placeholder="Kosongkan jika tanpa barcode" />
+          </div>
+          <div>
+            <label class="admin-label">Kategori *</label>
+            <select x-model="editingProduct.category" required class="admin-input">
+              <template x-for="cat in allCategories" :key="cat.id">
+                <option :value="cat.name" x-text="cat.name"></option>
+              </template>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="admin-label">Lokasi Rak</label>
+            <input type="text" x-model="editingProduct.location_shelf" class="admin-input" placeholder="mis. Rak A1" />
+          </div>
+          <div>
+            <label class="admin-label">Stok (informatif, opsional)</label>
+            <input type="number" x-model="editingProduct.stock" class="admin-input" placeholder="mis. 50" />
+          </div>
+        </div>
+
+        <div>
+          <label class="admin-label">Catatan</label>
+          <textarea x-model="editingProduct.notes" rows="2" class="admin-input" placeholder="Opsional"></textarea>
+        </div>
+
+        <label class="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" x-model="editingProduct.is_active" class="w-4 h-4" />
+          Produk aktif (tampil di aplikasi kasir)
+        </label>
+
+        <!-- Dynamic price rows -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="admin-label !mb-0">Satuan & Harga *</label>
+            <button type="button" @click="addPriceRow()" class="text-[12px] font-medium text-[var(--primary-dark)]">+ Tambah Satuan</button>
+          </div>
+          <div class="space-y-2">
+            <template x-for="(row, idx) in editingProduct.prices" :key="row._key">
+              <div class="grid gap-2 items-center" style="grid-template-columns: 1.1fr 1fr 1fr auto;">
+                <input type="text" x-model="row.unit" placeholder="Satuan (pcs/dus/kg)" class="admin-input" />
+                <input type="number" min="0" x-model="row.price_public" placeholder="Harga umum" class="admin-input" />
+                <input type="number" min="0" x-model="row.price_member" placeholder="Harga anggota" class="admin-input" />
+                <button type="button" @click="removePriceRow(idx)"
+                        class="w-8 h-8 rounded-lg bg-[var(--surface-sunken)] flex items-center justify-center shrink-0"
+                        :disabled="editingProduct.prices.length <= 1">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+              </div>
+            </template>
+          </div>
+          <p class="text-[11.5px] text-[var(--ink-muted)] mt-1.5">Kosongkan "Harga anggota" untuk menyamakannya otomatis dengan harga umum.</p>
+        </div>
+
+        <p x-show="formError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="formError"></p>
+
+        <div class="flex items-center gap-2.5 pt-1">
+          <button type="button" @click="closeProductModal()" class="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[13.5px] font-medium">Batal</button>
+          <button type="submit" :disabled="savingProduct" class="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13.5px] font-semibold disabled:opacity-60">
+            <span x-show="!savingProduct">Simpan</span>
+            <span x-show="savingProduct" x-cloak>Menyimpan…</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: REVIEW IMPORT CSV
+  ========================================================== -->
+  <div x-show="csvModalOpen" x-cloak class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
+        <h2 class="text-[15.5px] font-semibold">Review Import CSV</h2>
+        <button @click="csvModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="px-5 py-4 space-y-4">
+        <div class="grid grid-cols-3 gap-2.5 text-center">
+          <div class="rounded-xl bg-[var(--primary-tint)] py-2.5">
+            <p class="text-[18px] font-bold text-[var(--primary-dark)]" x-text="csvNewProducts.length"></p>
+            <p class="text-[11px] text-[var(--primary-dark)]">Produk baru</p>
+          </div>
+          <div class="rounded-xl bg-[var(--accent-tint)] py-2.5">
+            <p class="text-[18px] font-bold text-[var(--accent)]" x-text="csvConflicts.length"></p>
+            <p class="text-[11px] text-[var(--accent)]">Barcode duplikat</p>
+          </div>
+          <div class="rounded-xl bg-[var(--danger-tint)] py-2.5">
+            <p class="text-[18px] font-bold text-[var(--danger)]" x-text="csvErrors.length"></p>
+            <p class="text-[11px] text-[var(--danger)]">Baris error</p>
+          </div>
+        </div>
+
+        <!-- Errors -->
+        <div x-show="csvErrors.length" x-cloak>
+          <p class="text-[12.5px] font-medium text-[var(--ink-muted)] mb-1.5">Baris dengan error (dilewati otomatis):</p>
+          <ul class="text-[12px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2 space-y-1 max-h-32 overflow-y-auto">
+            <template x-for="(msg, i) in csvErrors" :key="i">
+              <li x-text="msg"></li>
+            </template>
+          </ul>
+        </div>
+
+        <!-- Conflicts -->
+        <div x-show="csvConflicts.length" x-cloak>
+          <div class="flex items-center justify-between mb-1.5">
+            <p class="text-[12.5px] font-medium text-[var(--ink-muted)]">Barcode sudah terdaftar — pilih aksi per baris:</p>
+            <div class="flex gap-2">
+              <button type="button" @click="setAllConflictAction('skip')" class="text-[11.5px] underline underline-offset-2">Lewati semua</button>
+              <button type="button" @click="setAllConflictAction('overwrite')" class="text-[11.5px] underline underline-offset-2">Timpa semua</button>
+            </div>
+          </div>
+          <div class="border border-[var(--border)] rounded-xl overflow-hidden">
+            <table class="w-full text-[12.5px]">
+              <thead>
+                <tr class="bg-[var(--surface-sunken)] text-left text-[11px] uppercase tracking-wide text-[var(--ink-muted)]">
+                  <th class="px-3 py-2 font-medium">Barcode</th>
+                  <th class="px-3 py-2 font-medium">Nama Baru (CSV)</th>
+                  <th class="px-3 py-2 font-medium">Nama Lama (DB)</th>
+                  <th class="px-3 py-2 font-medium">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(c, i) in csvConflicts" :key="i">
+                  <tr class="border-t border-[var(--border)]">
+                    <td class="px-3 py-2 font-mono" x-text="c.draft.barcode"></td>
+                    <td class="px-3 py-2" x-text="c.draft.name"></td>
+                    <td class="px-3 py-2 text-[var(--ink-muted)]" x-text="c.existing.name"></td>
+                    <td class="px-3 py-2">
+                      <select x-model="c.action" class="admin-input !py-1 !text-[12px]">
+                        <option value="skip">Lewati</option>
+                        <option value="overwrite">Timpa</option>
+                      </select>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p x-show="!csvNewProducts.length && !csvConflicts.length && !csvErrors.length" x-cloak class="text-[13px] text-[var(--ink-muted)] text-center py-4">
+          Tidak ada baris valid untuk diimpor.
+        </p>
+
+        <div class="flex items-center gap-2.5 pt-1">
+          <button type="button" @click="csvModalOpen = false" class="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[13.5px] font-medium">Batal</button>
+          <button type="button" @click="runCsvImport()"
+                  :disabled="csvImporting || (!csvNewProducts.length && !csvConflicts.length)"
+                  class="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13.5px] font-semibold disabled:opacity-60">
+            <span x-show="!csvImporting">Import Sekarang</span>
+            <span x-show="csvImporting" x-cloak>Mengimpor…</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       TOAST
+  ========================================================== -->
+  <div x-show="toast" x-cloak x-transition
+       class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[var(--ink)] text-white text-[13px] px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center">
+    <span x-text="toast"></span>
+  </div>
+
+  <script>
+    // =====================================================================
+    // KONFIGURASI SUPABASE — GANTI dengan URL & anon key project kamu
+    // (harus sama persis dengan yang dipakai di index.html)
+    // =====================================================================
+    const SUPABASE_URL = "https://mattbitglsoaassjmyhs.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_EKQhuybMHQGSp-Yk2tie7Q_WWnZV9iO";
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function randKey() {
+      return Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+
+    function downloadBlob(text, filename) {
+      const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function adminApp() {
+      return {
+        // ---- auth state ----
+        session: null,
+        loginEmail: "",
+        loginPassword: "",
+        loginLoading: false,
+        loginError: "",
+
+        // ---- data state ----
+        loading: true,
+        allProducts: [],
+        allCategories: [],
+        filtered: [],
+        search: "",
+        filterCategory: "",
+        filterStatus: "",
+        page: 1,
+        pageSize: 50,
+
+        // ---- product modal ----
+        productModalOpen: false,
+        editingProduct: null,
+        savingProduct: false,
+        formError: "",
+
+        // ---- csv import ----
+        csvNewProducts: [],
+        csvConflicts: [],
+        csvErrors: [],
+        csvModalOpen: false,
+        csvImporting: false,
+
+        // ---- toast ----
+        toast: "",
+        _toastTimer: null,
+
+        // ---- lifecycle ----
+        init() {
+          supabaseClient.auth.getSession().then(({ data }) => {
+            this.session = data.session;
+            if (this.session) this.loadData();
+          });
+
+          supabaseClient.auth.onAuthStateChange((_event, session) => {
+            this.session = session;
+            if (session) this.loadData();
+          });
+        },
+
+        // ---- auth ----
+        async login() {
+          this.loginLoading = true;
+          this.loginError = "";
+          const { error } = await supabaseClient.auth.signInWithPassword({
+            email: this.loginEmail,
+            password: this.loginPassword,
+          });
+          if (error) {
+            this.loginError = error.message === "Invalid login credentials"
+              ? "Email atau password salah."
+              : error.message;
+          }
+          this.loginLoading = false;
+        },
+
+        async logout() {
+          await supabaseClient.auth.signOut();
+          this.allProducts = [];
+          this.filtered = [];
+        },
+
+        // ---- data loading ----
+        async loadData() {
+          this.loading = true;
+          const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await Promise.all([
+            supabaseClient.from("products").select("*").order("name", { ascending: true }),
+            supabaseClient.from("categories").select("*").order("sort_order", { ascending: true }),
+          ]);
+
+          if (pErr) this.showToast("Gagal memuat produk: " + pErr.message);
+          else this.allProducts = products || [];
+
+          if (cErr) this.showToast("Gagal memuat kategori: " + cErr.message);
+          else this.allCategories = categories || [];
+
+          this.applyFilters();
+          this.loading = false;
+        },
+
+        // ---- filter & pagination ----
+        applyFilters() {
+          let list = this.allProducts;
+          const q = this.search.trim().toLowerCase();
+
+          if (q) {
+            list = list.filter(
+              (p) =>
+                p.name.toLowerCase().includes(q) ||
+                (p.barcode || "").toLowerCase().includes(q) ||
+                (p.alias || []).some((a) => a.toLowerCase().includes(q))
+            );
+          }
+          if (this.filterCategory) list = list.filter((p) => p.category === this.filterCategory);
+          if (this.filterStatus === "active") list = list.filter((p) => p.is_active);
+          if (this.filterStatus === "inactive") list = list.filter((p) => !p.is_active);
+
+          this.filtered = list;
+          this.page = 1;
+        },
+
+        get totalPages() {
+          return Math.max(1, Math.ceil(this.filtered.length / this.pageSize));
+        },
+        get pagedProducts() {
+          const start = (this.page - 1) * this.pageSize;
+          return this.filtered.slice(start, start + this.pageSize);
+        },
+        get paginationLabel() {
+          if (this.filtered.length === 0) return "0 produk";
+          const start = (this.page - 1) * this.pageSize + 1;
+          const end = Math.min(this.page * this.pageSize, this.filtered.length);
+          return `Menampilkan ${start}–${end} dari ${this.filtered.length} produk`;
+        },
+        prevPage() { if (this.page > 1) this.page--; },
+        nextPage() { if (this.page < this.totalPages) this.page++; },
+
+        // ---- product modal ----
+        emptyPriceRow() {
+          return { _key: randKey(), unit: "", price_public: "", price_member: "" };
+        },
+
+        openAddModal() {
+          this.formError = "";
+          this.editingProduct = {
+            id: null,
+            name: "",
+            aliasText: "",
+            barcode: "",
+            category: this.allCategories[0]?.name || "",
+            location_shelf: "",
+            stock: "",
+            notes: "",
+            is_active: true,
+            prices: [this.emptyPriceRow()],
+          };
+          this.productModalOpen = true;
+        },
+
+        openEditModal(p) {
+          this.formError = "";
+          this.editingProduct = {
+            id: p.id,
+            name: p.name,
+            aliasText: (p.alias || []).join(", "),
+            barcode: p.barcode || "",
+            category: p.category,
+            location_shelf: p.location_shelf || "",
+            stock: p.stock ?? "",
+            notes: p.notes || "",
+            is_active: p.is_active,
+            prices: (p.prices && p.prices.length ? p.prices : [{ unit: "", price_public: "", price_member: "" }])
+              .map((r) => ({ _key: randKey(), unit: r.unit, price_public: r.price_public, price_member: r.price_member })),
+          };
+          this.productModalOpen = true;
+        },
+
+        closeProductModal() {
+          this.productModalOpen = false;
+          this.editingProduct = null;
+        },
+
+        addPriceRow() {
+          this.editingProduct.prices.push(this.emptyPriceRow());
+        },
+        removePriceRow(idx) {
+          if (this.editingProduct.prices.length > 1) this.editingProduct.prices.splice(idx, 1);
+        },
+
+        validateProduct(p) {
+          if (!p.name.trim()) return "Nama produk wajib diisi.";
+          if (!p.category) return "Kategori wajib dipilih.";
+          if (!p.prices.length) return "Minimal satu satuan harga wajib diisi.";
+          for (const row of p.prices) {
+            if (!row.unit || !row.unit.toString().trim()) return "Satuan harga tidak boleh kosong.";
+            const pub = Number(row.price_public);
+            if (row.price_public === "" || row.price_public === null || isNaN(pub) || pub <= 0) {
+              return `Harga umum untuk satuan "${row.unit}" harus angka positif.`;
+            }
+            if (row.price_member !== "" && row.price_member !== null && row.price_member !== undefined) {
+              const mem = Number(row.price_member);
+              if (isNaN(mem) || mem < 0) return `Harga anggota untuk satuan "${row.unit}" tidak valid.`;
+            }
+          }
+          return null;
+        },
+
+        async saveProduct() {
+          const err = this.validateProduct(this.editingProduct);
+          if (err) { this.formError = err; return; }
+
+          this.savingProduct = true;
+          this.formError = "";
+
+          const isEdit = !!this.editingProduct.id;
+          const payload = {
+            name: this.editingProduct.name.trim(),
+            alias: this.editingProduct.aliasText.split(",").map((s) => s.trim()).filter(Boolean),
+            barcode: this.editingProduct.barcode.trim() || null,
+            category: this.editingProduct.category,
+            location_shelf: this.editingProduct.location_shelf.trim() || null,
+            stock: this.editingProduct.stock === "" ? null : Number(this.editingProduct.stock),
+            notes: this.editingProduct.notes.trim() || null,
+            is_active: this.editingProduct.is_active,
+            prices: this.editingProduct.prices.map((r) => ({
+              unit: r.unit.toString().trim(),
+              price_public: Number(r.price_public),
+              price_member: (r.price_member === "" || r.price_member === null || r.price_member === undefined)
+                ? Number(r.price_public)
+                : Number(r.price_member),
+            })),
+            updated_by: this.session?.user?.email || null,
+          };
+
+          let error;
+          if (isEdit) {
+            ({ error } = await supabaseClient.from("products").update(payload).eq("id", this.editingProduct.id));
+          } else {
+            ({ error } = await supabaseClient.from("products").insert(payload));
+          }
+
+          this.savingProduct = false;
+
+          if (error) {
+            this.formError = error.code === "23505" ? "Barcode ini sudah dipakai produk lain." : error.message;
+            return;
+          }
+
+          this.closeProductModal();
+          this.showToast(isEdit ? "Produk diperbarui." : "Produk ditambahkan.");
+          await this.loadData();
+        },
+
+        async toggleActive(p) {
+          const nextState = !p.is_active;
+          const { error } = await supabaseClient
+            .from("products")
+            .update({ is_active: nextState, updated_by: this.session?.user?.email || null })
+            .eq("id", p.id);
+
+          if (error) { this.showToast("Gagal mengubah status: " + error.message); return; }
+
+          p.is_active = nextState;
+          this.showToast(nextState ? `"${p.name}" diaktifkan kembali.` : `"${p.name}" dinonaktifkan.`);
+          this.applyFilters();
+        },
+
+        // ---- CSV import ----
+        handleCsvFile(event) {
+          const file = event.target.files[0];
+          event.target.value = ""; // reset agar file yang sama bisa dipilih ulang nanti
+          if (!file) return;
+
+          Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: (results) => this.processCsv(results.data),
+            error: (err) => this.showToast("Gagal membaca file CSV: " + err.message),
+          });
+        },
+
+        processCsv(rows) {
+          const errors = [];
+          const draftsByKey = new Map(); // key = barcode, atau 'name:xxx' jika tanpa barcode
+
+          rows.forEach((row, i) => {
+            const lineNo = i + 2; // baris 1 = header
+            const name = (row.name || "").toString().trim();
+            const category = (row.category || "").toString().trim();
+            const unit = (row.unit || "").toString().trim();
+            const pricePublicRaw = (row.price_public ?? "").toString().trim();
+            const pricePublic = Number(pricePublicRaw);
+            const priceMemberRaw = (row.price_member ?? "").toString().trim();
+            const priceMember = priceMemberRaw === "" ? pricePublic : Number(priceMemberRaw);
+            const barcode = (row.barcode || "").toString().trim();
+
+            if (!name) { errors.push(`Baris ${lineNo}: kolom "name" kosong.`); return; }
+            if (!category) { errors.push(`Baris ${lineNo}: kolom "category" kosong.`); return; }
+            if (!unit) { errors.push(`Baris ${lineNo}: kolom "unit" kosong.`); return; }
+            if (!pricePublicRaw || isNaN(pricePublic) || pricePublic <= 0) {
+              errors.push(`Baris ${lineNo}: "price_public" harus angka positif.`); return;
+            }
+            if (isNaN(priceMember) || priceMember < 0) {
+              errors.push(`Baris ${lineNo}: "price_member" tidak valid.`); return;
+            }
+
+            const key = barcode || "name:" + name.toLowerCase();
+            if (!draftsByKey.has(key)) {
+              draftsByKey.set(key, {
+                name,
+                category,
+                alias: (row.alias || "").toString().split(/[;|,]/).map((s) => s.trim()).filter(Boolean),
+                barcode: barcode || null,
+                location_shelf: (row.location_shelf || "").toString().trim() || null,
+                stock: (row.stock ?? "").toString().trim() === "" ? null : Number(row.stock),
+                notes: (row.notes || "").toString().trim() || null,
+                is_active: (row.is_active ?? "").toString().trim().toLowerCase() !== "false",
+                prices: [],
+              });
+            }
+            draftsByKey.get(key).prices.push({ unit, price_public: pricePublic, price_member: priceMember });
+          });
+
+          const drafts = Array.from(draftsByKey.values());
+          const conflicts = [];
+          const newOnes = [];
+
+          drafts.forEach((d) => {
+            if (d.barcode) {
+              const existing = this.allProducts.find((p) => p.barcode === d.barcode);
+              if (existing) { conflicts.push({ draft: d, existing, action: "skip" }); return; }
+            }
+            newOnes.push(d);
+          });
+
+          this.csvErrors = errors;
+          this.csvNewProducts = newOnes;
+          this.csvConflicts = conflicts;
+          this.csvModalOpen = true;
+        },
+
+        setAllConflictAction(action) {
+          this.csvConflicts.forEach((c) => (c.action = action));
+        },
+
+        async runCsvImport() {
+          this.csvImporting = true;
+          let inserted = 0, updated = 0, skipped = 0, failed = 0;
+          const updatedBy = this.session?.user?.email || null;
+
+          for (const d of this.csvNewProducts) {
+            const { error } = await supabaseClient.from("products").insert({ ...d, updated_by: updatedBy });
+            if (error) failed++; else inserted++;
+          }
+
+          for (const c of this.csvConflicts) {
+            if (c.action === "skip") { skipped++; continue; }
+            const { error } = await supabaseClient
+              .from("products")
+              .update({ ...c.draft, updated_by: updatedBy })
+              .eq("id", c.existing.id);
+            if (error) failed++; else updated++;
+          }
+
+          this.csvImporting = false;
+          this.csvModalOpen = false;
+          this.showToast(
+            `Import selesai — ${inserted} ditambahkan, ${updated} diperbarui, ${skipped} dilewati` +
+            (failed ? `, ${failed} gagal.` : ".")
+          );
+          await this.loadData();
+        },
+
+        downloadTemplate() {
+          const header = ["name","alias","barcode","category","unit","price_public","price_member","location_shelf","stock","notes","is_active"];
+          const example = [
+            {
+              name: "Indomie Goreng", alias: "miegor;indomie", barcode: "8992388101015", category: "Sembako",
+              unit: "pcs", price_public: 3500, price_member: 3300, location_shelf: "Rak A1", stock: 120, notes: "", is_active: "true",
+            },
+            {
+              name: "Sampoerna Mild", alias: "sampoerna", barcode: "8993212345678", category: "Rokok",
+              unit: "batang", price_public: 2200, price_member: 2200, location_shelf: "Rak B2", stock: 40, notes: "", is_active: "true",
+            },
+            {
+              name: "Sampoerna Mild", alias: "sampoerna", barcode: "8993212345678", category: "Rokok",
+              unit: "bungkus", price_public: 28000, price_member: 27000, location_shelf: "Rak B2", stock: 40, notes: "", is_active: "true",
+            },
+          ];
+          const csv = Papa.unparse({ fields: header, data: example });
+          downloadBlob(csv, "template-import-katalog-koperasi.csv");
+        },
+
+        exportCsv() {
+          const rows = [];
+          this.allProducts.forEach((p) => {
+            const priceRows = p.prices && p.prices.length ? p.prices : [{ unit: "", price_public: "", price_member: "" }];
+            priceRows.forEach((row) => {
+              rows.push({
+                name: p.name,
+                alias: (p.alias || []).join(";"),
+                barcode: p.barcode || "",
+                category: p.category,
+                unit: row.unit,
+                price_public: row.price_public,
+                price_member: row.price_member,
+                location_shelf: p.location_shelf || "",
+                stock: p.stock ?? "",
+                notes: p.notes || "",
+                is_active: p.is_active,
+              });
+            });
+          });
+          const csv = Papa.unparse(rows);
+          downloadBlob(csv, `katalog-koperasi-export-${new Date().toISOString().slice(0, 10)}.csv`);
+        },
+
+        // ---- helpers ----
+        formatRupiah(value) {
+          if (value === null || value === undefined || value === "") return "-";
+          return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
+        },
+
+        formatDate(iso) {
+          if (!iso) return "-";
+          return new Date(iso).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        },
+
+        showToast(msg) {
+          this.toast = msg;
+          clearTimeout(this._toastTimer);
+          this._toastTimer = setTimeout(() => { this.toast = ""; }, 4000);
+        },
+      };
+    }
+  </script>
+</body>
+</html>
