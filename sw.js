@@ -18,7 +18,7 @@
 // service worker lama otomatis dibersihkan dan versi baru dipakai.
 // =====================================================================
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const SHELL_CACHE = `koperasi-shell-${CACHE_VERSION}`;
 const DATA_CACHE = `koperasi-data-${CACHE_VERSION}`;
 const LIB_CACHE = `koperasi-libs-${CACHE_VERSION}`;

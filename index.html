@@ -150,7 +150,13 @@
          TOOLBAR: label hasil + toggle tampilan Grid/List
     ========================================================== -->
     <div class="flex items-center justify-between pt-4 pb-1">
-      <p class="text-[13px] font-medium text-[var(--ink-muted)]" x-text="isSearchActive ? resultsLabel : 'Tampilan'"></p>
+      <div class="flex items-center gap-2 min-w-0">
+        <button x-show="isSearchActive" x-cloak @click="goHome()"
+                class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center shrink-0" aria-label="Kembali ke beranda">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-dark)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        </button>
+        <p class="text-[13px] font-medium text-[var(--ink-muted)] truncate" x-text="isSearchActive ? resultsLabel : 'Tampilan'"></p>
+      </div>
       <div class="flex items-center gap-1 p-1 rounded-xl bg-[var(--surface-sunken)]">
         <button @click="setViewMode('list')" :class="viewMode === 'list' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
                 class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan list">
@@ -407,6 +413,13 @@
         viewMode: localStorage.getItem(VIEW_MODE_KEY) || "list",
         zoomedProduct: null,
 
+        // ---- navigasi/back-stack (home <-> browsing <-> overlay) ----
+        // Cermin dari entri history yang KITA buat sendiri. Selalu diawali ["home"].
+        // Satu-satunya tempat yang boleh melakukan .pop() adalah listener popstate;
+        // di tempat lain kita hanya boleh push/replace, supaya tidak pernah desync
+        // dengan window.history yang sesungguhnya.
+        _nav: ["home"],
+
         // ---- scanner state ----
         scannerOpen: false,
         scannerState: "idle",
@@ -419,7 +432,42 @@
           this.$nextTick(() => this.$refs.searchInput.focus());
           window.addEventListener("online", () => { this.online = true; this.loadData(); });
           window.addEventListener("offline", () => { this.online = false; });
+
+          // ---- History API: tandai entri pertama sebagai "home" ----
+          history.replaceState({ koperasiView: "home" }, "");
+          this._nav = ["home"];
+
+          window.addEventListener("popstate", (event) => {
+            // Pengaman: kalau shadow stack kita cuma berisi "home", tidak ada lagi
+            // yang bisa di-pop dari sisi app — reset penuh ke kondisi awal.
+            if (this._nav.length <= 1) {
+              this._nav = ["home"];
+              this.closeScannerInternal();
+              this.zoomedProduct = null;
+              this.resetViewState();
+              return;
+            }
+
+            const closed = this._nav.pop();
+            const now = this._nav[this._nav.length - 1];
+
+            if (closed === "scanner") this.closeScannerInternal();
+            if (closed === "zoom") this.zoomedProduct = null;
+            if (closed === "browsing" && now === "home") this.resetViewState();
+          });
+
           this.loadData();
+        },
+
+        // Dorong level baru ke history (dipakai saat MEMBUKA sesuatu: browsing/scanner/zoom)
+        navPush(view) {
+          this._nav.push(view);
+          history.pushState({ koperasiView: view }, "");
+        },
+        // Ganti label level PUNCAK tanpa menambah depth (tidak memicu popstate)
+        navReplace(view) {
+          this._nav[this._nav.length - 1] = view;
+          history.replaceState({ koperasiView: view }, "");
         },
 
         // ---- data loading ----
@@ -495,6 +543,32 @@
           } else {
             this.results = [];
           }
+          this.syncHistoryState();
+        },
+
+        resetViewState() {
+          this.query = "";
+          this.selectedCategory = null;
+          this.isScanResult = false;
+          this.results = [];
+        },
+
+        syncHistoryState() {
+          const active = this.isSearchActive;
+          const top = this._nav[this._nav.length - 1];
+          if (active && top !== "browsing") {
+            this.navPush("browsing");
+          } else if (!active && top === "browsing") {
+            history.back(); // popstate akan pop "browsing" & memanggil resetViewState()
+          }
+        },
+
+        goHome() {
+          // dipanggil dari tombol "Kembali ke Beranda"
+          this.resetViewState(); // update UI instan
+          if (this._nav[this._nav.length - 1] === "browsing") {
+            history.back(); // selaraskan history (popstate akan no-op karena state sudah direset)
+          }
         },
 
         selectCategory(cat) {
@@ -515,14 +589,21 @@
         openZoom(p) {
           if (!p.image_url || p._imgError) return;
           this.zoomedProduct = p;
+          this.navPush("zoom");
         },
-        closeZoom() { this.zoomedProduct = null; },
+        closeZoom() {
+          this.zoomedProduct = null; // instan, tidak perlu nunggu popstate
+          if (this._nav[this._nav.length - 1] === "zoom") {
+            history.back();
+          }
+        },
 
         // ---- barcode scanner ----
         scanBarcode() {
           this.scannerOpen = true;
           this.scannerState = "starting";
           this.isProcessingScan = false;
+          this.navPush("scanner");
           this.$nextTick(() => this.startCamera());
         },
 
@@ -563,7 +644,22 @@
 
         showScannedProduct(product) {
           this.query = ""; this.selectedCategory = null; this.isScanResult = true;
-          this.results = [product]; this.closeScanner();
+          this.results = [product];
+          this.closeScannerInternal(); // tutup kamera langsung, tanpa navigasi history
+
+          // Gantikan level "scanner" yang lagi aktif jadi "browsing" (hasil scan).
+          // Kalau tepat di bawah scanner sudah ada level "browsing" (mis. scan dilakukan
+          // saat sedang browsing), cukup pop scanner-nya lewat history.back() supaya
+          // depth stack tidak bertambah dan tidak terjadi race dengan popstate.
+          const top = this._nav[this._nav.length - 1];
+          const below = this._nav[this._nav.length - 2];
+          if (top === "scanner" && below === "browsing") {
+            history.back();
+          } else if (top === "scanner") {
+            this.navReplace("browsing");
+          } else {
+            this.syncHistoryState();
+          }
         },
 
         resumeScanning() {
@@ -584,10 +680,18 @@
           });
         },
 
-        closeScanner() {
+        closeScannerInternal() {
           this.scannerOpen = false; this.scannerState = "idle"; this.isProcessingScan = false;
           if (this.html5QrCode) {
             this.html5QrCode.stop().catch(() => {}).finally(() => { this.html5QrCode.clear(); this.html5QrCode = null; });
+          }
+        },
+
+        closeScanner() {
+          // dipanggil dari tombol X / Batal di UI
+          this.closeScannerInternal(); // langsung, biar responsif tanpa nunggu popstate
+          if (this._nav[this._nav.length - 1] === "scanner") {
+            history.back(); // selaraskan history; popstate akan panggil closeScannerInternal lagi (no-op)
           }
         },
 
