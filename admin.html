@@ -181,8 +181,16 @@
               <template x-for="p in pagedProducts" :key="p.id">
                 <tr class="border-t border-[var(--border)] align-top" :class="!p.is_active && 'opacity-55'">
                   <td class="px-4 py-2.5">
-                    <p class="font-medium text-[var(--ink)]" x-text="p.name"></p>
-                    <p x-show="p.alias && p.alias.length" class="text-[11.5px] text-[var(--ink-muted)]" x-text="(p.alias||[]).join(', ')"></p>
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-9 h-9 rounded-lg overflow-hidden bg-[var(--surface-sunken)] shrink-0 flex items-center justify-center">
+                        <img x-show="p.image_url && !p._imgError" :src="p.image_url" @error="p._imgError = true" class="w-full h-full object-cover" />
+                        <svg x-show="!p.image_url || p._imgError" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9AA6A0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m21 15-5-5L5 19"/></svg>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="font-medium text-[var(--ink)] truncate" x-text="p.name"></p>
+                        <p x-show="p.alias && p.alias.length" class="text-[11.5px] text-[var(--ink-muted)] truncate" x-text="(p.alias||[]).join(', ')"></p>
+                      </div>
+                    </div>
                   </td>
                   <td class="px-4 py-2.5">
                     <span class="text-[11.5px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)]" x-text="p.category"></span>
@@ -249,6 +257,29 @@
         <div>
           <label class="admin-label">Nama Produk *</label>
           <input type="text" x-model="editingProduct.name" required class="admin-input" placeholder="mis. Indomie Goreng" />
+        </div>
+
+        <div>
+          <label class="admin-label">Foto Produk (opsional)</label>
+          <div class="flex items-center gap-3">
+            <div class="w-20 h-20 rounded-xl overflow-hidden bg-[var(--surface-sunken)] shrink-0 flex items-center justify-center border border-[var(--border)]">
+              <img x-show="editingProduct.image_url" :src="editingProduct.image_url" class="w-full h-full object-cover" />
+              <svg x-show="!editingProduct.image_url" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9AA6A0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="m21 15-5-5L5 19"/></svg>
+            </div>
+            <div class="flex-1 space-y-1.5">
+              <div class="flex gap-2">
+                <button type="button" @click="$refs.photoInput.click()" :disabled="photoUploading"
+                        class="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[12.5px] font-medium disabled:opacity-60">
+                  <span x-show="!photoUploading" x-text="editingProduct.image_url ? 'Ganti Foto' : 'Upload Foto'"></span>
+                  <span x-show="photoUploading" x-cloak>Memproses…</span>
+                </button>
+                <button type="button" x-show="editingProduct.image_url" x-cloak @click="removePhoto()" class="px-3 py-1.5 rounded-lg text-[12.5px] font-medium text-[var(--danger)]">Hapus</button>
+              </div>
+              <input type="file" x-ref="photoInput" accept="image/*" class="hidden" @change="handlePhotoFile($event)" />
+              <p class="text-[11px] text-[var(--ink-muted)]">Otomatis dipotong 1:1 (500×500) & dikompres (~20–40 KB).</p>
+              <p x-show="photoError" x-cloak class="text-[11.5px] text-[var(--danger)]" x-text="photoError"></p>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -455,6 +486,56 @@
       URL.revokeObjectURL(url);
     }
 
+    // ---- Pemrosesan foto: center-crop 1:1, resize, kompresi JPEG adaptif ----
+    function canvasToBlob(canvas, quality) {
+      return new Promise((resolve) => canvas.toBlob((b) => resolve(b), "image/jpeg", quality));
+    }
+
+    async function centerCropResizeToBlob(file, targetSize, maxBytes) {
+      const bitmap = await createImageBitmap(file);
+      let size = targetSize;
+      let blob = null;
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+
+        // center-crop ke rasio 1:1 dari foto asli, lalu skalakan ke `size`
+        const cropSize = Math.min(bitmap.width, bitmap.height);
+        const sx = (bitmap.width - cropSize) / 2;
+        const sy = (bitmap.height - cropSize) / 2;
+        ctx.drawImage(bitmap, sx, sy, cropSize, cropSize, 0, 0, size, size);
+
+        // kompresi kualitas JPEG bertahap sampai <= 40KB (target 20–40KB)
+        let quality = 0.85;
+        blob = await canvasToBlob(canvas, quality);
+        while (blob.size > 40 * 1024 && quality > 0.3) {
+          quality -= 0.08;
+          blob = await canvasToBlob(canvas, quality);
+        }
+
+        // kalau di kualitas terendah masih di atas batas maksimal (50KB),
+        // perkecil dimensi kanvas dan ulangi (fallback untuk foto yang sangat detail)
+        if (blob.size <= maxBytes || size <= 300) break;
+        size -= 50;
+      }
+
+      if (bitmap.close) bitmap.close();
+      return blob;
+    }
+
+    // Ekstrak path relatif dari URL publik Supabase Storage, untuk keperluan hapus file
+    function extractStoragePath(publicUrl) {
+      if (!publicUrl) return null;
+      const marker = "/object/public/product-images/";
+      const idx = publicUrl.indexOf(marker);
+      if (idx === -1) return null;
+      return publicUrl.slice(idx + marker.length);
+    }
+
     function adminApp() {
       return {
         // ---- auth state ----
@@ -480,6 +561,8 @@
         editingProduct: null,
         savingProduct: false,
         formError: "",
+        photoUploading: false,
+        photoError: "",
 
         // ---- csv import ----
         csvNewProducts: [],
@@ -536,7 +619,7 @@
           ]);
 
           if (pErr) this.showToast("Gagal memuat produk: " + pErr.message);
-          else this.allProducts = products || [];
+          else this.allProducts = (products || []).map((p) => ({ ...p, _imgError: false }));
 
           if (cErr) this.showToast("Gagal memuat kategori: " + cErr.message);
           else this.allCategories = categories || [];
@@ -589,6 +672,7 @@
 
         openAddModal() {
           this.formError = "";
+          this.photoError = "";
           this.editingProduct = {
             id: null,
             name: "",
@@ -599,6 +683,9 @@
             stock: "",
             notes: "",
             is_active: true,
+            image_url: null,
+            _newUploadPath: null,
+            _originalImageUrl: null,
             prices: [this.emptyPriceRow()],
           };
           this.productModalOpen = true;
@@ -606,6 +693,7 @@
 
         openEditModal(p) {
           this.formError = "";
+          this.photoError = "";
           this.editingProduct = {
             id: p.id,
             name: p.name,
@@ -616,6 +704,9 @@
             stock: p.stock ?? "",
             notes: p.notes || "",
             is_active: p.is_active,
+            image_url: p.image_url || null,
+            _newUploadPath: null,
+            _originalImageUrl: p.image_url || null,
             prices: (p.prices && p.prices.length ? p.prices : [{ unit: "", price_public: "", price_member: "" }])
               .map((r) => ({ _key: randKey(), unit: r.unit, price_public: r.price_public, price_member: r.price_member })),
           };
@@ -623,8 +714,13 @@
         },
 
         closeProductModal() {
+          // buang foto yang sempat diupload di sesi form ini tapi belum pernah tersimpan ke produk
+          if (this.editingProduct && this.editingProduct._newUploadPath) {
+            supabaseClient.storage.from("product-images").remove([this.editingProduct._newUploadPath]).catch(() => {});
+          }
           this.productModalOpen = false;
           this.editingProduct = null;
+          this.photoError = "";
         },
 
         addPriceRow() {
@@ -632,6 +728,56 @@
         },
         removePriceRow(idx) {
           if (this.editingProduct.prices.length > 1) this.editingProduct.prices.splice(idx, 1);
+        },
+
+        // ---- foto produk: crop 1:1, kompresi adaptif, upload ke Supabase Storage ----
+        async handlePhotoFile(event) {
+          const file = event.target.files[0];
+          event.target.value = ""; // reset agar file yang sama bisa dipilih ulang
+          if (!file) return;
+
+          if (!file.type.startsWith("image/")) {
+            this.photoError = "File harus berupa gambar (JPG/PNG/dst).";
+            return;
+          }
+
+          this.photoError = "";
+          this.photoUploading = true;
+
+          try {
+            const blob = await centerCropResizeToBlob(file, 500, 50 * 1024);
+            const path = `products/${randKey()}.jpg`;
+
+            const { error: upErr } = await supabaseClient.storage
+              .from("product-images")
+              .upload(path, blob, { contentType: "image/jpeg", upsert: true });
+            if (upErr) throw upErr;
+
+            // kalau sebelumnya di sesi form ini sudah pernah upload foto baru (ganti berkali-kali
+            // sebelum simpan), hapus yang lama supaya tidak menumpuk file yatim di storage
+            if (this.editingProduct._newUploadPath) {
+              supabaseClient.storage.from("product-images").remove([this.editingProduct._newUploadPath]).catch(() => {});
+            }
+
+            const { data: urlData } = supabaseClient.storage.from("product-images").getPublicUrl(path);
+            this.editingProduct.image_url = urlData.publicUrl;
+            this.editingProduct._newUploadPath = path;
+          } catch (err) {
+            console.error("Gagal memproses/upload foto:", err);
+            this.photoError = "Gagal mengupload foto: " + (err.message || "periksa koneksi & bucket product-images.");
+          } finally {
+            this.photoUploading = false;
+          }
+        },
+
+        removePhoto() {
+          // hanya hapus langsung dari storage kalau ini foto BARU yang belum pernah tersimpan
+          // ke produk (foto lama yang sudah tersimpan baru dihapus setelah form disimpan, lihat saveProduct)
+          if (this.editingProduct._newUploadPath) {
+            supabaseClient.storage.from("product-images").remove([this.editingProduct._newUploadPath]).catch(() => {});
+            this.editingProduct._newUploadPath = null;
+          }
+          this.editingProduct.image_url = null;
         },
 
         validateProduct(p) {
@@ -669,6 +815,7 @@
             stock: this.editingProduct.stock === "" ? null : Number(this.editingProduct.stock),
             notes: this.editingProduct.notes.trim() || null,
             is_active: this.editingProduct.is_active,
+            image_url: this.editingProduct.image_url || null,
             prices: this.editingProduct.prices.map((r) => ({
               unit: r.unit.toString().trim(),
               price_public: Number(r.price_public),
@@ -691,6 +838,17 @@
           if (error) {
             this.formError = error.code === "23505" ? "Barcode ini sudah dipakai produk lain." : error.message;
             return;
+          }
+
+          // Save berhasil: foto (kalau ada) sudah resmi jadi bagian produk ini,
+          // jangan sampai dihapus oleh cleanup di closeProductModal().
+          const originalUrl = this.editingProduct._originalImageUrl;
+          this.editingProduct._newUploadPath = null;
+
+          // Kalau foto diganti/dihapus, bersihkan foto LAMA dari storage (aman sekarang karena DB sudah terupdate)
+          if (isEdit && originalUrl && originalUrl !== payload.image_url) {
+            const oldPath = extractStoragePath(originalUrl);
+            if (oldPath) supabaseClient.storage.from("product-images").remove([oldPath]).catch(() => {});
           }
 
           this.closeProductModal();
