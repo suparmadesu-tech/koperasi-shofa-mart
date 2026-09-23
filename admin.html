@@ -469,6 +469,39 @@
         </button>
       </div>
 
+      <div x-show="masterImporting" x-cloak x-transition.opacity class="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl p-5 space-y-4">
+          <div class="space-y-1">
+            <h3 class="text-[16px] font-semibold">Mengimpor Master Produk...</h3>
+            <p class="text-[13px] text-[var(--ink-muted)]">
+              Batch <span x-text="masterImportStats.currentBatch"></span> dari <span x-text="masterImportStats.totalBatches"></span>
+              (<span x-text="masterImportProgress"></span>%)
+            </p>
+          </div>
+
+          <div class="h-3 rounded-full bg-[var(--surface-sunken)] overflow-hidden border border-[var(--border)]">
+            <div class="h-full rounded-full bg-[var(--primary)] transition-all duration-300 ease-out" :style="'width: ' + masterImportProgress + '%'"></div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-xl bg-[var(--surface-sunken)] p-3">
+              <div class="text-[11.5px] text-[var(--ink-muted)]">Total Data</div>
+              <div class="text-[15px] font-semibold" x-text="masterImportStats.total"></div>
+            </div>
+            <div class="rounded-xl bg-[var(--surface-sunken)] p-3">
+              <div class="text-[11.5px] text-[var(--ink-muted)]">Berhasil</div>
+              <div class="text-[15px] font-semibold text-emerald-600" x-text="masterImportStats.success"></div>
+            </div>
+            <div class="rounded-xl bg-[var(--surface-sunken)] p-3">
+              <div class="text-[11.5px] text-[var(--ink-muted)]">Diproses</div>
+              <div class="text-[15px] font-semibold" x-text="masterImportStats.processed"></div>
+            </div>
+          </div>
+
+          <p class="text-[12px] text-amber-600 font-medium text-center">Mohon jangan tutup atau refresh halaman ini.</p>
+        </div>
+      </div>
+
       <div class="px-5 py-4 flex-1 space-y-4">
         <!-- Search & Actions -->
         <div class="flex items-center gap-2.5">
@@ -653,6 +686,9 @@
         masterSearch: "",
         masterResults: [],
         masterSearching: false,
+        masterImporting: false,
+        masterImportProgress: 0,
+        masterImportStats: { total: 0, processed: 0, success: 0, skipped: 0, failed: 0, currentBatch: 0, totalBatches: 0 },
 
         // ---- toast ----
         toast: "",
@@ -1183,80 +1219,61 @@
 
         async handleMasterCsv(event) {
           const file = event.target.files[0];
-          event.target.value = ""; // reset input file
+          event.target.value = "";
           if (!file) return;
 
-          const confirmImport = confirm(
+          if (!confirm(
             `Anda akan mengimpor data CSV ke tabel master_products.\n\n` +
             `File ini bisa berisi hingga 28.770 baris.\n` +
             `Proses akan berjalan dalam beberapa chunk (1000 baris per batch).\n\n` +
             `Lanjutkan?`
-          );
-          if (!confirmImport) return;
+          )) return;
 
-          this.masterSearching = true; // tampilkan loading di UI
-          let totalSuccess = 0;
-          let totalFailed = 0;
-
+          const CHUNK_SIZE = 1000;
           try {
-            await new Promise((resolve, reject) => {
-              Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                // CRITICAL: transform barcode column to STRING to preserve leading zeros
-                transform: (value, field) => {
-                  if (field === "barcode") return String(value);
-                  return value;
-                },
-                complete: async (results) => {
-                  try {
-                    const rows = results.data;
-                    if (rows.length === 0) {
-                      alert("File CSV kosong atau tidak valid.");
-                      resolve();
-                      return;
-                    }
+            const results = await new Promise((resolve, reject) => Papa.parse(file, {
+              header: true,
+              skipEmptyLines: true,
+              transform: (value, field) => field === "barcode" ? String(value) : value,
+              complete: resolve,
+              error: reject,
+            }));
+            const rows = (results.data || []).map((row) => ({
+              name: String(row.name || "").trim(),
+              barcode: String(row.barcode || "").trim(),
+            })).filter((row) => row.name || row.barcode);
+            const totalData = rows.length;
+            const totalBatches = Math.ceil(totalData / CHUNK_SIZE);
 
-                    // Chunk rows into batches of 1000
-                    const chunkSize = 1000;
-                    for (let i = 0; i < rows.length; i += chunkSize) {
-                      const chunk = rows.slice(i, i + chunkSize);
-                      const payload = chunk.map((row) => ({
-                        name: (row.name || "").trim(),
-                        barcode: (row.barcode || "").trim() || null,
-                      })).filter((item) => item.name); // hanya ambil yang ada nama
+            this.masterImportStats = { total: totalData, processed: 0, success: 0, skipped: 0, failed: 0, currentBatch: 0, totalBatches };
+            this.masterImportProgress = 0;
+            this.masterImporting = true;
 
-                      if (payload.length === 0) continue;
+            for (let i = 0; i < totalData; i += CHUNK_SIZE) {
+              const chunk = rows.slice(i, i + CHUNK_SIZE);
+              this.masterImportStats.currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
+              const { data, error } = await supabaseClient
+                .from("master_products")
+                .upsert(chunk.map((row) => ({ name: row.name, barcode: row.barcode || null })), {
+                  onConflict: "barcode", ignoreDuplicates: true, defaultToNull: false,
+                })
+                .select("id");
+              const inserted = error ? 0 : (data ? data.length : 0);
+              this.masterImportStats.success += inserted;
+              this.masterImportStats.skipped += error ? 0 : chunk.length - inserted;
+              this.masterImportStats.failed += error ? chunk.length : 0;
+              this.masterImportStats.processed += chunk.length;
+              this.masterImportProgress = Math.round((this.masterImportStats.processed / totalData) * 100);
+              await new Promise((resolve) => setTimeout(resolve, 0));
+            }
 
-                      const { error } = await supabaseClient
-                        .from("master_products")
-                        .upsert(payload, { onConflict: "barcode", ignoreDuplicates: true });
-
-                      if (error) {
-                        console.error("Batch error:", error);
-                        totalFailed += payload.length;
-                      } else {
-                        totalSuccess += payload.length;
-                      }
-                    }
-
-                    alert(
-                      `Import master selesai.\n\n` +
-                      `✓ Berhasil: ${totalSuccess} baris\n` +
-                      `✗ Gagal: ${totalFailed} baris`
-                    );
-                    resolve();
-                  } catch (err) {
-                    reject(err);
-                  }
-                },
-                error: (err) => reject(err),
-              });
-            });
+            this.masterImporting = false;
+            await this.searchMaster();
+            const stats = this.masterImportStats;
+            alert(`Import Master Selesai!\nTotal CSV: ${stats.total}\nBerhasil Ditambahkan: ${stats.success}\nDilewati (Duplikat Barcode): ${stats.skipped}\nGagal: ${stats.failed}`);
           } catch (err) {
+            this.masterImporting = false;
             alert("Gagal memproses CSV master: " + err.message);
-          } finally {
-            this.masterSearching = false;
           }
         },
 
