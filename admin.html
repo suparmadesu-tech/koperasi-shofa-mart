@@ -64,7 +64,9 @@
   <div x-show="!session" x-cloak class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-sm">
       <div class="text-center mb-7">
-       <img src="icons/icon-192.png" alt="Logo Koperasi" class="w-14 h-14 rounded-2xl object-cover mx-auto mb-3">
+        <div class="w-14 h-14 rounded-2xl bg-[var(--primary)] mx-auto flex items-center justify-center mb-3">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+        </div>
         <h1 class="text-[19px] font-semibold text-[var(--ink)]">Admin Katalog Koperasi</h1>
         <p class="text-[13.5px] text-[var(--ink-muted)] mt-1">Masuk untuk mengelola data barang & harga</p>
       </div>
@@ -98,7 +100,9 @@
     <header class="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--border)]">
       <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <img src="icons/icon-192.png" alt="Logo Koperasi" class="w-8 h-8 rounded-lg object-cover shrink-0">
+          <div class="w-8 h-8 rounded-lg bg-[var(--primary)] flex items-center justify-center shrink-0">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+          </div>
           <p class="font-semibold text-[14.5px]">Admin — Katalog Koperasi</p>
         </div>
         <div class="flex items-center gap-3">
@@ -122,7 +126,7 @@
         <select x-model="filterCategory" @change="applyFilters()" class="admin-input w-auto">
           <option value="">Semua Kategori</option>
           <template x-for="cat in allCategories" :key="cat.id">
-            <option :value="cat.name" x-text="cat.name"></option>
+            <option :value="cat.id" x-text="cat.name"></option>
           </template>
         </select>
         <select x-model="filterStatus" @change="applyFilters()" class="admin-input w-auto">
@@ -189,7 +193,7 @@
                     </div>
                   </td>
                   <td class="px-4 py-2.5">
-                    <span class="text-[11.5px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)]" x-text="p.category"></span>
+                    <span class="text-[11.5px] px-2 py-0.5 rounded-full bg-[var(--surface-sunken)]" x-text="categoryName(p)"></span>
                   </td>
                   <td class="px-4 py-2.5 font-mono text-[12px]" x-text="p.barcode || '-'"></td>
                   <td class="px-4 py-2.5">
@@ -290,9 +294,9 @@
           </div>
           <div>
             <label class="admin-label">Kategori *</label>
-            <select x-model="editingProduct.category" required class="admin-input">
+            <select x-model="editingProduct.category_id" required class="admin-input">
               <template x-for="cat in allCategories" :key="cat.id">
-                <option :value="cat.name" x-text="cat.name"></option>
+                <option :value="cat.id" x-text="cat.name"></option>
               </template>
             </select>
           </div>
@@ -610,7 +614,12 @@
         async loadData() {
           this.loading = true;
           const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await Promise.all([
-            supabaseClient.from("products").select("*").order("name", { ascending: true }),
+            supabaseClient
+              .from("products")
+              // "category:categories(...)" -> embed relasi via FK products.category_id -> categories.id,
+              // supaya nama kategori bisa ditampilkan tanpa query terpisah per baris.
+              .select("*, category:categories(id,name,icon)")
+              .order("name", { ascending: true }),
             supabaseClient.from("categories").select("*").order("sort_order", { ascending: true }),
           ]);
 
@@ -622,6 +631,23 @@
 
           this.applyFilters();
           this.loading = false;
+        },
+
+        // Nama kategori untuk ditampilkan — utamakan hasil embed dari loadData(),
+        // fallback ke pencarian manual di allCategories (mis. saat data baru saja diedit di client).
+        categoryName(p) {
+          if (p.category && p.category.name) return p.category.name;
+          const cat = this.allCategories.find((c) => c.id === p.category_id);
+          return cat ? cat.name : "-";
+        },
+
+        // Cari category_id berdasarkan NAMA kategori (dipakai saat import CSV,
+        // karena file CSV isinya nama kategori dalam bentuk teks, bukan UUID).
+        categoryIdByName(name) {
+          const key = (name || "").toString().trim().toLowerCase();
+          if (!key) return null;
+          const found = this.allCategories.find((c) => c.name.trim().toLowerCase() === key);
+          return found ? found.id : null;
         },
 
         // ---- filter & pagination ----
@@ -637,7 +663,7 @@
                 (p.alias || []).some((a) => a.toLowerCase().includes(q))
             );
           }
-          if (this.filterCategory) list = list.filter((p) => p.category === this.filterCategory);
+          if (this.filterCategory) list = list.filter((p) => p.category_id === this.filterCategory);
           if (this.filterStatus === "active") list = list.filter((p) => p.is_active);
           if (this.filterStatus === "inactive") list = list.filter((p) => !p.is_active);
 
@@ -674,7 +700,7 @@
             name: "",
             aliasText: "",
             barcode: "",
-            category: this.allCategories[0]?.name || "",
+            category_id: this.allCategories[0]?.id || "",
             location_shelf: "",
             stock: "",
             notes: "",
@@ -695,7 +721,7 @@
             name: p.name,
             aliasText: (p.alias || []).join(", "),
             barcode: p.barcode || "",
-            category: p.category,
+            category_id: p.category_id,
             location_shelf: p.location_shelf || "",
             stock: p.stock ?? "",
             notes: p.notes || "",
@@ -778,7 +804,7 @@
 
         validateProduct(p) {
           if (!p.name.trim()) return "Nama produk wajib diisi.";
-          if (!p.category) return "Kategori wajib dipilih.";
+          if (!p.category_id) return "Kategori wajib dipilih.";
           if (!p.prices.length) return "Minimal satu satuan harga wajib diisi.";
           for (const row of p.prices) {
             if (!row.unit || !row.unit.toString().trim()) return "Satuan harga tidak boleh kosong.";
@@ -806,7 +832,7 @@
             name: this.editingProduct.name.trim(),
             alias: this.editingProduct.aliasText.split(",").map((s) => s.trim()).filter(Boolean),
             barcode: this.editingProduct.barcode.trim() || null,
-            category: this.editingProduct.category,
+            category_id: this.editingProduct.category_id,
             location_shelf: this.editingProduct.location_shelf.trim() || null,
             stock: this.editingProduct.stock === "" ? null : Number(this.editingProduct.stock),
             notes: this.editingProduct.notes.trim() || null,
@@ -887,7 +913,7 @@
           rows.forEach((row, i) => {
             const lineNo = i + 2; // baris 1 = header
             const name = (row.name || "").toString().trim();
-            const category = (row.category || "").toString().trim();
+            const categoryNameRaw = (row.category || "").toString().trim();
             const unit = (row.unit || "").toString().trim();
             const pricePublicRaw = (row.price_public ?? "").toString().trim();
             const pricePublic = Number(pricePublicRaw);
@@ -896,7 +922,17 @@
             const barcode = (row.barcode || "").toString().trim();
 
             if (!name) { errors.push(`Baris ${lineNo}: kolom "name" kosong.`); return; }
-            if (!category) { errors.push(`Baris ${lineNo}: kolom "category" kosong.`); return; }
+            if (!categoryNameRaw) { errors.push(`Baris ${lineNo}: kolom "category" kosong.`); return; }
+
+            // Cocokkan nama kategori dari CSV (teks) ke category_id di database.
+            // Kalau tidak ketemu, baris DITOLAK (bukan ditebak/fallback ke kategori lain)
+            // supaya tidak ada produk yang diam-diam salah kategori.
+            const categoryId = this.categoryIdByName(categoryNameRaw);
+            if (!categoryId) {
+              errors.push(`Baris ${lineNo}: kategori "${categoryNameRaw}" tidak ditemukan di database — tambahkan kategori ini dulu, atau perbaiki penulisannya di CSV.`);
+              return;
+            }
+
             if (!unit) { errors.push(`Baris ${lineNo}: kolom "unit" kosong.`); return; }
             if (!pricePublicRaw || isNaN(pricePublic) || pricePublic <= 0) {
               errors.push(`Baris ${lineNo}: "price_public" harus angka positif.`); return;
@@ -909,7 +945,7 @@
             if (!draftsByKey.has(key)) {
               draftsByKey.set(key, {
                 name,
-                category,
+                category_id: categoryId,
                 alias: (row.alias || "").toString().split(/[;|,]/).map((s) => s.trim()).filter(Boolean),
                 barcode: barcode || null,
                 location_shelf: (row.location_shelf || "").toString().trim() || null,
@@ -1001,7 +1037,7 @@
                 name: p.name,
                 alias: (p.alias || []).join(";"),
                 barcode: p.barcode || "",
-                category: p.category,
+                category: this.categoryName(p),
                 unit: row.unit,
                 price_public: row.price_public,
                 price_member: row.price_member,

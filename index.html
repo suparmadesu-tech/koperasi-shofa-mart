@@ -475,9 +475,8 @@
           try {
             const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await Promise.all([
               supabaseClient
-                .from("products")
-                .select("id,name,alias,barcode,category,prices,location_shelf,stock,notes,is_active,image_url")
-                .eq("is_active", true),
+                .from("public_catalog")
+                .select("id,name,alias,barcode,category_id,category_name,category_icon,prices,location_shelf,image_url"),
               supabaseClient
                 .from("categories")
                 .select("id,name,icon,is_quick_access,sort_order")
@@ -487,7 +486,11 @@
             if (pErr) throw pErr;
             if (cErr) throw cErr;
 
-            this.allProducts = (products || []).map((p) => ({ ...p, _imgError: false }));
+            this.allProducts = (products || []).map((p) => ({
+              ...p,
+              category: p.category_name,
+              _imgError: false,
+            }));
             this.allCategories = categories || [];
             this.lastSynced = new Date();
 
@@ -503,6 +506,7 @@
           }
         },
 
+        // ---- caching ----
         cacheData() {
           try {
             localStorage.setItem(CACHE_KEY, JSON.stringify({
