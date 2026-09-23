@@ -540,13 +540,17 @@
 
                 <template x-for="mp in masterResults" :key="mp.id">
                   <tr class="border-t border-[var(--border)]">
-                    <td class="px-4 py-2.5 font-medium" x-text="mp.name"></td>
+                    <td class="px-4 py-2.5 font-medium">
+                      <span x-text="mp.name"></span><span x-show="mp.inCatalog" class="ml-2 text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary-dark)]">✓ Di Katalog</span>
+                    </td>
                     <td class="px-4 py-2.5 font-mono text-[12px]" x-text="mp.barcode || '-'"></td>
                     <td class="px-4 py-2.5">
-                      <button @click="useMasterProduct(mp)" 
-                              class="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[12.5px] font-semibold hover:bg-[var(--primary-dark)]">
-                        Gunakan
-                      </button>
+                      <template x-if="mp.inCatalog">
+                        <button disabled class="px-3 py-1.5 rounded-lg bg-[var(--surface-sunken)] text-[var(--ink-muted)] text-[12px] font-medium cursor-not-allowed">Sudah Ada</button>
+                      </template>
+                      <template x-if="!mp.inCatalog">
+                        <button @click="useMasterProduct(mp)" class="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[12.5px] font-semibold hover:bg-[var(--primary-dark)]">Gunakan</button>
+                      </template>
                     </td>
                   </tr>
                 </template>
@@ -1208,7 +1212,10 @@
             const { data, error } = await query;
             if (error) throw error;
 
-            this.masterResults = data || [];
+            this.masterResults = (data || []).map((mp) => ({
+              ...mp,
+              inCatalog: mp.barcode ? this.allProducts.some((p) => p.barcode && p.barcode === mp.barcode) : false,
+            }));
           } catch (err) {
             this.showToast("Gagal mencari master: " + err.message);
             this.masterResults = [];
@@ -1277,21 +1284,25 @@
           }
         },
 
-        useMasterProduct(mp) {
-          // Cek apakah barcode sudah ada di katalog aktif (allProducts)
+        async useMasterProduct(mp) {
+          if (mp.inCatalog) {
+            alert(`Produk ini sudah ada di katalog aktif.`);
+            return;
+          }
+
           if (mp.barcode) {
-            const exists = this.allProducts.find((p) => p.barcode === mp.barcode);
-            if (exists) {
-              alert(
-                `Barcode "${mp.barcode}" sudah terdaftar di katalog aktif:\n\n` +
-                `Nama: ${exists.name}\n\n` +
-                `Tidak bisa menambahkan produk duplikat.`
-              );
+            const { data: existing } = await supabaseClient
+              .from("products")
+              .select("id, name")
+              .eq("barcode", mp.barcode)
+              .maybeSingle();
+
+            if (existing) {
+              alert(`Produk dengan barcode ${mp.barcode} sudah terdaftar di Katalog Koperasi (${existing.name}).`);
               return;
             }
           }
 
-          // Tutup modal master, buka modal tambah produk, isi otomatis
           this.masterModalOpen = false;
           this.openAddModal();
           this.editingProduct.master_product_id = mp.id || null;
