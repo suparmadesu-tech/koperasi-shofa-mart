@@ -135,7 +135,11 @@
           <option value="inactive">Nonaktif</option>
         </select>
 
-        <div class="flex-1"></div>
+        <div class="flex-1 flex justify-end">
+          <button @click="masterModalOpen = true" class="px-3.5 py-2 rounded-xl border-2 border-[var(--primary)] text-[var(--primary-dark)] bg-[var(--primary-tint)] text-[13px] font-bold shadow-sm mr-2">
+            Database Master Produk
+          </button>
+        </div>
 
         <button @click="openAddModal()" class="px-3.5 py-2 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold">
           + Tambah Produk
@@ -254,6 +258,7 @@
       </div>
 
       <form @submit.prevent="saveProduct()" class="px-5 py-4 space-y-3.5" x-show="editingProduct">
+        <input type="hidden" x-model="editingProduct.master_product_id" />
         <div>
           <label class="admin-label">Nama Produk *</label>
           <input type="text" x-model="editingProduct.name" required class="admin-input" placeholder="mis. Indomie Goreng" />
@@ -453,6 +458,78 @@
   </div>
 
   <!-- =========================================================
+       MODAL: DATABASE MASTER PRODUK
+  ========================================================== -->
+  <div x-show="masterModalOpen" x-cloak class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
+        <h2 class="text-[15.5px] font-semibold">Database Master Produk</h2>
+        <button @click="masterModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="px-5 py-4 flex-1 space-y-4">
+        <!-- Search & Actions -->
+        <div class="flex items-center gap-2.5">
+          <div class="flex-1">
+            <input type="text" 
+                   x-model="masterSearch" 
+                   @input.debounce.300ms="searchMaster()"
+                   placeholder="Cari nama atau barcode dari database master…"
+                   class="admin-input w-full" />
+          </div>
+          <button @click="$refs.masterCsvInput.click()" class="px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] font-medium whitespace-nowrap">
+            Import CSV Master
+          </button>
+          <input type="file" x-ref="masterCsvInput" accept=".csv" class="hidden" @change="handleMasterCsv($event)" />
+        </div>
+
+        <!-- Results Table -->
+        <div class="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface)]">
+          <div class="overflow-x-auto max-h-[50vh] overflow-y-auto">
+            <table class="w-full text-[13px]">
+              <thead class="sticky top-0 bg-[var(--surface-sunken)]">
+                <tr class="text-left text-[11.5px] uppercase tracking-wide text-[var(--ink-muted)]">
+                  <th class="px-4 py-2.5 font-medium">Nama Master</th>
+                  <th class="px-4 py-2.5 font-medium">Barcode</th>
+                  <th class="px-4 py-2.5 font-medium w-28">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-if="masterSearching">
+                  <tr><td colspan="3" class="px-4 py-8 text-center text-[var(--ink-muted)]">Mencari…</td></tr>
+                </template>
+
+                <template x-if="!masterSearching && masterResults.length === 0">
+                  <tr><td colspan="3" class="px-4 py-8 text-center text-[var(--ink-muted)]">Tidak ada hasil. Coba kata kunci lain.</td></tr>
+                </template>
+
+                <template x-for="mp in masterResults" :key="mp.id">
+                  <tr class="border-t border-[var(--border)]">
+                    <td class="px-4 py-2.5 font-medium" x-text="mp.name"></td>
+                    <td class="px-4 py-2.5 font-mono text-[12px]" x-text="mp.barcode || '-'"></td>
+                    <td class="px-4 py-2.5">
+                      <button @click="useMasterProduct(mp)" 
+                              class="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[12.5px] font-semibold hover:bg-[var(--primary-dark)]">
+                        Gunakan
+                      </button>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="text-[12px] text-[var(--ink-muted)] text-center">
+          Cari produk dari database master (28.770 data) lalu gunakan untuk mengisi form tambah produk secara otomatis.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
        TOAST
   ========================================================== -->
   <div x-show="toast" x-cloak x-transition
@@ -570,6 +647,12 @@
         csvErrors: [],
         csvModalOpen: false,
         csvImporting: false,
+
+        // ---- master products ----
+        masterModalOpen: false,
+        masterSearch: "",
+        masterResults: [],
+        masterSearching: false,
 
         // ---- toast ----
         toast: "",
@@ -697,6 +780,7 @@
           this.photoError = "";
           this.editingProduct = {
             id: null,
+            master_product_id: null,
             name: "",
             aliasText: "",
             barcode: "",
@@ -718,6 +802,7 @@
           this.photoError = "";
           this.editingProduct = {
             id: p.id,
+            master_product_id: p.master_product_id || null,
             name: p.name,
             aliasText: (p.alias || []).join(", "),
             barcode: p.barcode || "",
@@ -829,6 +914,7 @@
 
           const isEdit = !!this.editingProduct.id;
           const payload = {
+            master_product_id: this.editingProduct.master_product_id || null,
             name: this.editingProduct.name.trim(),
             alias: this.editingProduct.aliasText.split(",").map((s) => s.trim()).filter(Boolean),
             barcode: this.editingProduct.barcode.trim() || null,
@@ -1061,6 +1147,139 @@
         formatDate(iso) {
           if (!iso) return "-";
           return new Date(iso).toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        },
+
+        // ---- master products ----
+        async searchMaster() {
+          const term = this.masterSearch.trim();
+          if (!term) {
+            this.masterResults = [];
+            return;
+          }
+
+          this.masterSearching = true;
+          try {
+            let query = supabaseClient.from("master_products").select("*").limit(30);
+
+            // Jika input hanya angka, cari by barcode exact match
+            if (/^\d+$/.test(term)) {
+              query = query.eq("barcode", term);
+            } else {
+              // Jika input mengandung huruf, cari by nama (case-insensitive partial match)
+              query = query.ilike("name", `%${term}%`);
+            }
+
+            const { data, error } = await query;
+            if (error) throw error;
+
+            this.masterResults = data || [];
+          } catch (err) {
+            this.showToast("Gagal mencari master: " + err.message);
+            this.masterResults = [];
+          } finally {
+            this.masterSearching = false;
+          }
+        },
+
+        async handleMasterCsv(event) {
+          const file = event.target.files[0];
+          event.target.value = ""; // reset input file
+          if (!file) return;
+
+          const confirmImport = confirm(
+            `Anda akan mengimpor data CSV ke tabel master_products.\n\n` +
+            `File ini bisa berisi hingga 28.770 baris.\n` +
+            `Proses akan berjalan dalam beberapa chunk (1000 baris per batch).\n\n` +
+            `Lanjutkan?`
+          );
+          if (!confirmImport) return;
+
+          this.masterSearching = true; // tampilkan loading di UI
+          let totalSuccess = 0;
+          let totalFailed = 0;
+
+          try {
+            await new Promise((resolve, reject) => {
+              Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                // CRITICAL: transform barcode column to STRING to preserve leading zeros
+                transform: (value, field) => {
+                  if (field === "barcode") return String(value);
+                  return value;
+                },
+                complete: async (results) => {
+                  try {
+                    const rows = results.data;
+                    if (rows.length === 0) {
+                      alert("File CSV kosong atau tidak valid.");
+                      resolve();
+                      return;
+                    }
+
+                    // Chunk rows into batches of 1000
+                    const chunkSize = 1000;
+                    for (let i = 0; i < rows.length; i += chunkSize) {
+                      const chunk = rows.slice(i, i + chunkSize);
+                      const payload = chunk.map((row) => ({
+                        name: (row.name || "").trim(),
+                        barcode: (row.barcode || "").trim() || null,
+                      })).filter((item) => item.name); // hanya ambil yang ada nama
+
+                      if (payload.length === 0) continue;
+
+                      const { error } = await supabaseClient
+                        .from("master_products")
+                        .upsert(payload, { onConflict: "barcode", ignoreDuplicates: true });
+
+                      if (error) {
+                        console.error("Batch error:", error);
+                        totalFailed += payload.length;
+                      } else {
+                        totalSuccess += payload.length;
+                      }
+                    }
+
+                    alert(
+                      `Import master selesai.\n\n` +
+                      `✓ Berhasil: ${totalSuccess} baris\n` +
+                      `✗ Gagal: ${totalFailed} baris`
+                    );
+                    resolve();
+                  } catch (err) {
+                    reject(err);
+                  }
+                },
+                error: (err) => reject(err),
+              });
+            });
+          } catch (err) {
+            alert("Gagal memproses CSV master: " + err.message);
+          } finally {
+            this.masterSearching = false;
+          }
+        },
+
+        useMasterProduct(mp) {
+          // Cek apakah barcode sudah ada di katalog aktif (allProducts)
+          if (mp.barcode) {
+            const exists = this.allProducts.find((p) => p.barcode === mp.barcode);
+            if (exists) {
+              alert(
+                `Barcode "${mp.barcode}" sudah terdaftar di katalog aktif:\n\n` +
+                `Nama: ${exists.name}\n\n` +
+                `Tidak bisa menambahkan produk duplikat.`
+              );
+              return;
+            }
+          }
+
+          // Tutup modal master, buka modal tambah produk, isi otomatis
+          this.masterModalOpen = false;
+          this.openAddModal();
+          this.editingProduct.master_product_id = mp.id || null;
+          this.editingProduct.name = mp.name || "";
+          this.editingProduct.barcode = mp.barcode || "";
         },
 
         showToast(msg) {
