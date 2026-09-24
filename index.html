@@ -84,17 +84,64 @@
   @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .dot-online { animation: pulse-dot 2.4s ease-in-out infinite; }
 
-  /* Card hover lift */
+  /* Signature Card v5: Premium depth & separation */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease-out, border-color 180ms ease-out;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.05),
+      0 2px 6px rgba(15, 23, 42, 0.04),
+      0 4px 12px rgba(15, 23, 42, 0.03);
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 220ms ease-out;
   }
   .card:hover {
-    border-color: var(--border-strong);
-    box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+    transform: translateY(-3px);
+    border-color: #BAE6FD;
+    box-shadow:
+      0 2px 4px rgba(7, 89, 133, 0.04),
+      0 6px 16px -2px rgba(7, 89, 133, 0.1),
+      0 12px 32px -4px rgba(7, 89, 133, 0.08);
   }
-  .card:active { transform: scale(0.99); }
+  .card:active {
+    transform: translateY(-1px) scale(0.995);
+  }
+  .card:focus-within {
+    outline: 2px solid var(--primary-light);
+    outline-offset: 2px;
+  }
+
+  /* Photo area: Ocean signature with refined depth */
+  .photo-area {
+    background: linear-gradient(145deg, #F0F9FF 0%, #E0F2FE 100%);
+    position: relative;
+  }
+  .photo-area::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(7, 89, 133, 0.08);
+    pointer-events: none;
+  }
+
+  /* Price anchor: subtle signature baseline */
+  .price-anchor {
+    position: relative;
+    display: inline-block;
+  }
+  .price-anchor::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary-light) 0%, transparent 100%);
+    opacity: 0.15;
+    border-radius: 1px;
+  }
 
   /* Button active */
   .btn-interactive { transition: transform 150ms ease, background-color 150ms ease; }
@@ -163,7 +210,7 @@
        HEADER
   ========================================================== -->
   <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-[var(--border)] shadow-sm">
-    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-md lg:max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <div class="relative w-9 h-9 rounded-xl overflow-hidden ring-1 ring-[var(--border)]">
           <img src="icons/icon-192.png" alt="Logo Shofa Mart" class="w-full h-full object-cover">
@@ -182,7 +229,7 @@
     </div>
   </header>
 
-  <main class="max-w-md mx-auto px-4 pb-10">
+  <main class="max-w-md lg:max-w-5xl mx-auto px-4 pb-10">
 
     <!-- =========================================================
          HERO / SEARCH AREA
@@ -344,24 +391,28 @@
       </div>
 
       <!-- GRID VIEW -->
-      <div x-show="!loading && results.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 gap-3.5">
+      <div x-show="!loading && results.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
         <template x-for="p in results" :key="p.id">
-          <article class="group rounded-2xl overflow-hidden card">
-            <div class="relative aspect-square bg-[var(--surface-sunken)] rounded-t-2xl overflow-hidden cursor-pointer" @click="openZoom(p)" role="button" tabindex="0" @keydown.enter="openZoom(p)" :aria-label="'Perbesar foto ' + p.name">
+          <article class="group rounded-2xl overflow-hidden card flex flex-col">
+            <div class="relative aspect-[4/3] photo-area overflow-hidden cursor-pointer"
+                 @click="openZoom(p)" role="button" tabindex="0" @keydown.enter="openZoom(p)" :aria-label="'Perbesar foto ' + p.name">
               <img x-show="p.image_url && !p._imgError" :src="p.image_url" loading="lazy" @error="p._imgError = true"
-                   class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+                   class="w-full h-full object-contain p-2.5 sm:p-3 lg:p-3.5 transition-transform duration-250 group-hover:scale-[1.02]" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
-                <span x-html="getIcon(categoryIcon(p.category), false, 34)"></span>
-              </div>
-              <div x-show="p.image_url && !p._imgError" class="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+                <div class="w-14 h-14 rounded-xl bg-white/80 flex items-center justify-center shadow-sm">
+                  <span x-html="getIcon(categoryIcon(p.category), false, 28)" class="text-[var(--primary)]"></span>
+                </div>
               </div>
             </div>
-            <div class="p-3.5 space-y-1.5 cursor-pointer transition-colors active:bg-[var(--surface-sunken)]/70"
+            <div class="p-3 flex-1 flex flex-col cursor-pointer transition-colors hover:bg-[var(--surface-sunken)]/30 active:bg-[var(--surface-sunken)]/50"
                  @click="openProductDetail(p)" role="button" tabindex="0" @keydown.enter="openProductDetail(p)" @keydown.space.prevent="openProductDetail(p)" :aria-label="'Lihat detail ' + p.name">
-              <p class="text-[10px] font-bold uppercase tracking-wide text-[var(--primary)]" x-text="p.category"></p>
-              <h3 class="text-[14.5px] font-bold text-[var(--ink)] leading-snug line-clamp-2" x-text="p.name"></h3>
-              <p class="text-[20px] leading-none font-extrabold price-highlight tabular pt-0.5" x-show="p.prices && p.prices.length" x-text="formatRupiah(p.prices[0]?.price_public)"></p>
+              <div class="flex-1 space-y-1">
+                <p class="text-[9.5px] font-bold uppercase tracking-wider text-[var(--primary-dark)]" x-text="p.category"></p>
+                <h3 class="text-[14px] font-bold text-[var(--ink)] leading-snug line-clamp-2 min-h-[2.2rem]" x-text="p.name"></h3>
+              </div>
+              <div class="pt-2 mt-1">
+                <p class="text-[22px] sm:text-[23px] lg:text-[24px] leading-none font-extrabold price-highlight tabular" x-show="p.prices && p.prices.length" x-text="formatRupiah(p.prices[0]?.price_public)"></p>
+              </div>
             </div>
           </article>
         </template>
@@ -370,20 +421,26 @@
       <!-- LIST VIEW -->
       <div x-show="!loading && results.length > 0 && viewMode === 'list'" class="space-y-2.5">
         <template x-for="p in results" :key="p.id">
-          <article class="group flex gap-3.5 p-3.5 rounded-2xl card">
-            <div class="relative w-20 h-20 rounded-xl overflow-hidden bg-[var(--surface-sunken)] shrink-0 cursor-pointer" @click="openZoom(p)" role="button" tabindex="0" @keydown.enter="openZoom(p)" :aria-label="'Perbesar foto ' + p.name">
+          <article class="group flex gap-3 p-3 rounded-2xl card">
+            <div class="relative w-20 h-20 rounded-xl overflow-hidden photo-area shrink-0 cursor-pointer" @click="openZoom(p)" role="button" tabindex="0" @keydown.enter="openZoom(p)" :aria-label="'Perbesar foto ' + p.name">
               <img x-show="p.image_url && !p._imgError" :src="p.image_url" loading="lazy" @error="p._imgError = true"
-                   class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]" />
+                   class="w-full h-full object-contain p-2 transition-transform duration-250" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
-                <span x-html="getIcon(categoryIcon(p.category), false, 28)"></span>
+                <div class="w-10 h-10 rounded-lg bg-white/80 flex items-center justify-center shadow-sm">
+                  <span x-html="getIcon(categoryIcon(p.category), false, 24)" class="text-[var(--primary)]"></span>
+                </div>
               </div>
             </div>
 
-            <div class="min-w-0 flex-1 flex flex-col justify-center gap-1 cursor-pointer transition-colors active:bg-[var(--surface-sunken)]/60 -m-1.5 p-1.5 rounded-xl"
+            <div class="min-w-0 flex-1 flex flex-col cursor-pointer transition-colors hover:bg-[var(--surface-sunken)]/30 active:bg-[var(--surface-sunken)]/50 -m-1 p-1 rounded-xl"
                  @click="openProductDetail(p)" role="button" tabindex="0" @keydown.enter="openProductDetail(p)" @keydown.space.prevent="openProductDetail(p)" :aria-label="'Lihat detail ' + p.name">
-              <p class="text-[10px] font-bold uppercase tracking-wide text-[var(--primary)]" x-text="p.category"></p>
-              <h3 class="text-[15px] font-bold text-[var(--ink)] leading-snug truncate" x-text="p.name"></h3>
-              <p class="text-[20px] leading-none font-extrabold price-highlight tabular" x-show="p.prices && p.prices.length" x-text="formatRupiah(p.prices[0]?.price_public)"></p>
+              <div class="space-y-0.5 mb-1">
+                <p class="text-[9.5px] font-bold uppercase tracking-wider text-[var(--primary-dark)]" x-text="p.category"></p>
+                <h3 class="text-[14px] font-bold text-[var(--ink)] leading-snug line-clamp-2" x-text="p.name"></h3>
+              </div>
+              <div class="mt-auto">
+                <p class="text-[21px] sm:text-[22px] leading-none font-extrabold price-highlight tabular" x-show="p.prices && p.prices.length" x-text="formatRupiah(p.prices[0]?.price_public)"></p>
+              </div>
             </div>
           </article>
         </template>
@@ -407,7 +464,7 @@
   <!-- =========================================================
        PRODUCT DETAIL MODAL
   ========================================================== -->
-  <div x-show="selectedProduct" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center" @click="closeProductDetail()">
+  <div x-show="selectedProduct" x-cloak x-transition.opacity class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center" @click="closeProductDetail()">
     <div @click.stop
          x-show="selectedProduct"
          x-transition:enter="transition ease-out duration-200"
@@ -416,57 +473,72 @@
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
          x-transition:leave-end="opacity-0 translate-y-6 sm:translate-y-0 sm:scale-95"
-         class="relative bg-white w-full sm:max-w-xl sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto shadow-2xl sm:flex sm:flex-row">
+         class="relative bg-white w-full sm:max-w-xl sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-hidden shadow-2xl border border-[var(--border)] sm:flex sm:flex-row">
 
-      <button @click.stop="closeProductDetail()" class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white shadow-md border border-[var(--border)] flex items-center justify-center text-[var(--ink-muted)]" aria-label="Tutup detail produk">
+      <button @click.stop="closeProductDetail()" class="absolute top-3.5 right-3.5 z-10 w-9 h-9 rounded-xl bg-white shadow-md border border-[var(--border)] flex items-center justify-center text-[var(--ink-muted)] hover:bg-[var(--surface-sunken)] hover:text-[var(--primary)] transition-colors" aria-label="Tutup detail produk">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
       </button>
 
-      <div class="relative aspect-square sm:aspect-auto sm:w-2/5 sm:shrink-0 bg-[var(--surface-sunken)] rounded-t-3xl sm:rounded-l-3xl sm:rounded-tr-none overflow-hidden cursor-pointer"
+      <div class="relative aspect-square sm:aspect-auto sm:w-2/5 sm:shrink-0 bg-gradient-to-br from-[var(--surface-sunken)] to-[#E0F2FE]/40 sm:rounded-l-3xl overflow-hidden cursor-pointer group"
            @click="openZoom(selectedProduct)" role="button" tabindex="0" @keydown.enter="openZoom(selectedProduct)" aria-label="Perbesar foto produk">
-        <img x-show="selectedProduct?.image_url && !selectedProduct?._imgError" :src="selectedProduct?.image_url" class="w-full h-full object-cover" />
+        <img x-show="selectedProduct?.image_url && !selectedProduct?._imgError" :src="selectedProduct?.image_url" class="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
         <div x-show="!selectedProduct?.image_url || selectedProduct?._imgError" class="absolute inset-0 flex items-center justify-center">
-          <span x-html="getIcon(categoryIcon(selectedProduct?.category), false, 44)"></span>
+          <div class="w-20 h-20 rounded-2xl bg-white/70 backdrop-blur-sm flex items-center justify-center shadow-sm">
+            <span x-html="getIcon(categoryIcon(selectedProduct?.category), false, 40)"></span>
+          </div>
         </div>
-        <div x-show="selectedProduct?.image_url && !selectedProduct?._imgError" class="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-full bg-black/45 backdrop-blur-sm flex items-center justify-center shadow-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+        <div x-show="selectedProduct?.image_url && !selectedProduct?._imgError" class="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm flex items-center gap-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary-dark)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+          <span class="text-[10.5px] font-semibold text-[var(--primary-dark)]">Zoom</span>
         </div>
       </div>
 
-      <div class="p-5 sm:p-6 space-y-4 sm:w-3/5 sm:overflow-y-auto">
-        <div class="space-y-1.5 pr-8 sm:pr-2">
-          <p class="text-[11px] font-bold uppercase tracking-wide text-[var(--primary)]" x-text="selectedProduct?.category"></p>
-          <h2 class="text-[18px] font-extrabold text-[var(--ink)] leading-snug" x-text="selectedProduct?.name"></h2>
+      <div class="p-5 sm:p-6 space-y-5 sm:w-3/5 overflow-y-auto">
+        <div class="space-y-2 pr-8 sm:pr-2">
+          <div class="inline-flex items-center px-2 py-1 rounded-lg bg-[var(--primary-tint)] border border-[var(--primary-light)]/20">
+            <span class="text-[10.5px] font-bold uppercase tracking-wide text-[var(--primary-dark)]" x-text="selectedProduct?.category"></span>
+          </div>
+          <h2 class="text-[19px] font-extrabold text-[var(--ink)] leading-tight" x-text="selectedProduct?.name"></h2>
         </div>
 
-        <div class="space-y-0.5" x-show="selectedProduct?.prices?.length">
-          <p class="text-[26px] leading-none font-extrabold price-highlight tabular" x-text="formatRupiah(selectedProduct?.prices?.[0]?.price_public)"></p>
-          <p x-show="selectedProduct?.prices?.[0]?.price_member != null" class="text-[14px] text-[var(--ink-muted)] font-semibold" x-text="'Harga anggota ' + formatRupiah(selectedProduct?.prices?.[0]?.price_member)"></p>
+        <div class="space-y-1" x-show="selectedProduct?.prices?.length">
+          <p class="text-[10.5px] font-semibold uppercase tracking-wide text-[var(--ink-muted)]" x-show="selectedProduct?.prices?.[0]?.unit" x-text="selectedProduct?.prices?.[0]?.unit"></p>
+          <p class="text-[28px] leading-none font-extrabold price-highlight tabular" x-text="formatRupiah(selectedProduct?.prices?.[0]?.price_public)"></p>
+          <p x-show="selectedProduct?.prices?.[0]?.price_member != null" class="text-[13.5px] text-[var(--ink-muted)] font-semibold flex items-center gap-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span x-text="'Anggota ' + formatRupiah(selectedProduct?.prices?.[0]?.price_member)"></span>
+          </p>
         </div>
 
-        <div x-show="selectedProduct?.prices?.length > 1" class="pt-1">
-          <p class="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)] mb-2">Semua Satuan</p>
-          <div class="rounded-xl border border-[var(--border)] overflow-hidden">
+        <div x-show="selectedProduct?.prices?.length > 1" class="space-y-2">
+          <p class="text-[11px] font-bold uppercase tracking-wide text-[var(--ink-muted)]">Semua Satuan</p>
+          <div class="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface-sunken)]/30">
             <template x-for="(row, idx) in (selectedProduct?.prices || [])" :key="row.unit">
-              <div class="flex items-center justify-between px-3 py-2 text-[13px]" :class="idx > 0 ? 'border-t border-[var(--border)]' : ''">
+              <div class="flex items-center justify-between px-3.5 py-2.5 text-[13px] bg-white" :class="idx > 0 ? 'border-t border-[var(--border)]' : ''">
                 <span class="font-semibold text-[var(--ink)]" x-text="row.unit"></span>
                 <span class="flex items-baseline gap-2">
                   <span class="font-bold price-highlight tabular" x-text="formatRupiah(row.price_public)"></span>
-                  <span x-show="row.price_member != null" class="text-[var(--ink-muted)] tabular text-[12px]" x-text="'· Anggota ' + formatRupiah(row.price_member)"></span>
+                  <span x-show="row.price_member != null" class="text-[var(--ink-muted)] tabular text-[11.5px]" x-text="'· ' + formatRupiah(row.price_member)"></span>
                 </span>
               </div>
             </template>
           </div>
         </div>
 
-        <div class="pt-1 space-y-1.5 text-[13px]" x-show="selectedProduct?.location_shelf || selectedProduct?.barcode">
-          <div x-show="selectedProduct?.location_shelf" class="flex items-center gap-2 text-[var(--ink-muted)]">
-            <span class="font-semibold text-[var(--ink)]">Lokasi rak:</span>
-            <span x-text="selectedProduct?.location_shelf"></span>
+        <div class="space-y-2.5 text-[13px] pt-1" x-show="selectedProduct?.location_shelf || selectedProduct?.barcode">
+          <div x-show="selectedProduct?.location_shelf" class="flex items-start gap-2.5 p-2.5 rounded-lg bg-[var(--surface-sunken)]/50">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <div class="flex-1">
+              <p class="font-semibold text-[var(--ink)] text-[11.5px] uppercase tracking-wide mb-0.5">Lokasi Rak</p>
+              <p class="text-[var(--ink-muted)]" x-text="selectedProduct?.location_shelf"></p>
+            </div>
           </div>
-          <div x-show="selectedProduct?.barcode" class="flex items-center gap-2 text-[var(--ink-muted)]">
-            <span class="font-semibold text-[var(--ink)]">Barcode:</span>
-            <span class="font-mono tabular" x-text="selectedProduct?.barcode"></span>
+          <div x-show="selectedProduct?.barcode" class="flex items-start gap-2.5 p-2.5 rounded-lg bg-[var(--surface-sunken)]/50">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><path d="M3 5v14"/><path d="M8 5v14"/><path d="M12 5v14"/><path d="M17 5v14"/><path d="M21 5v14"/></svg>
+            <div class="flex-1">
+              <p class="font-semibold text-[var(--ink)] text-[11.5px] uppercase tracking-wide mb-0.5">Barcode</p>
+              <p class="font-mono tabular text-[var(--ink-muted)]" x-text="selectedProduct?.barcode"></p>
+            </div>
           </div>
         </div>
       </div>
