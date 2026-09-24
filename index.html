@@ -7,11 +7,11 @@
 
 <!-- PWA -->
 <link rel="manifest" href="./manifest.json" />
-<meta name="theme-color" content="#0E6E5A" />
+<meta name="theme-color" content="#0C4A6E" />
 <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Katalog Koperasi" />
+<meta name="apple-mobile-web-app-title" content="Shofa Mart" />
 
 <!-- Tailwind CSS (CDN) -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -30,22 +30,41 @@
 
 <style>
   :root{
-    --bg:            #F4F6F3;
+    /* Backgrounds & Surface */
+    --bg:            #F4F8FA;
     --surface:       #FFFFFF;
-    --surface-sunken:#EDF1EC;
-    --surface-raised: #FFFFFF;
-    --ink:           #16201B;
-    --ink-muted:     #5C6B64;
-    --ink-faint:     #93A099;
-    --border:        #E1E6DF;
-    --primary:       #0E6E5A;
-    --primary-dark:  #0A4F41;
-    --primary-tint:  #E3F0EB;
-    --accent:        #B4530A;
-    --accent-tint:   #F7E9DC;
+    --surface-sunken:#EEF4F7;
+    --surface-raised:#FFFFFF;
+
+    /* Typography & Ink */
+    --ink:           #0F172A;
+    --ink-muted:     #64748B;
+    --ink-faint:     #94A3B8;
+
+    /* Borders & Dividers */
+    --border:        #E2E8F0;
+    --border-strong: #CBD5E1;
+
+    /* Brand Primary: SHОFA MART OCEAN */
+    --primary:       #075985;
+    --primary-dark:  #0C4A6E;
+    --primary-light: #0284C7;
+    --primary-tint:  #E0F2FE;
+
+    /* Accent: restrained warm gold */
+    --accent:        #F59E0B;
+    --accent-dark:   #B45309;
+    --accent-tint:   #FEF3C7;
+
+    /* Semantic States */
     --online:        #1E9E5A;
     --offline:       #B45309;
-    --shadow-card: 0 1px 2px rgba(22,32,27,0.04), 0 4px 14px rgba(22,32,27,0.05);
+    --success:       #1E9E5A;
+    --success-tint:  #E6F7EE;
+    --warning:       #D97706;
+    --warning-tint:  #FEF3E2;
+    --danger:        #B42318;
+    --danger-tint:   #FBEAE8;
   }
 
   * { -webkit-tap-highlight-color: transparent; }
@@ -65,10 +84,36 @@
   @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .dot-online { animation: pulse-dot 2.4s ease-in-out infinite; }
 
-  .card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+  /* Card hover lift */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms ease-out, border-color 180ms ease-out;
+  }
+  .card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+  }
+  .card:active { transform: scale(0.99); }
+
+  /* Button active */
+  .btn-interactive { transition: transform 150ms ease, background-color 150ms ease; }
+  .btn-interactive:active { transform: scale(0.96); }
+
+  /* Price highlight */
+  .price-highlight { color: var(--primary-dark); font-weight: 800; }
+
+  /* Tabular numbers */
   .tabular { font-variant-numeric: tabular-nums; }
 
-  /* Skeleton shimmer — lebih halus dari sekadar pulse polos */
+  /* Ocean subtle background */
+  .bg-ocean-subtle {
+    background-image:
+      radial-gradient(at 0% 0%, rgba(2, 132, 199, 0.06) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(20, 184, 166, 0.05) 0px, transparent 50%);
+  }
+
+  /* Skeleton shimmer */
   .skeleton {
     position: relative;
     overflow: hidden;
@@ -78,39 +123,61 @@
     content: "";
     position: absolute; inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65), transparent);
-    animation: shimmer 1.5s ease-in-out infinite;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+    animation: shimmer 1.6s ease-in-out infinite;
   }
   @keyframes shimmer { 100% { transform: translateX(100%); } }
 
+  /* Scanner styles */
   #qr-reader { width: 100%; border-radius: 16px; overflow: hidden; background: #000; }
   #qr-reader video { width: 100% !important; border-radius: 16px; object-fit: cover; }
   #qr-reader__scan_region { border-radius: 16px !important; }
   #qr-reader__dashboard { display: none !important; }
+
+  /* Category chips scroll */
+  .category-chip {
+    transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+  }
+  .category-chip.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(7,89,133,0.22);
+  }
+  .category-chip.inactive {
+    background: var(--surface);
+    color: var(--ink-muted);
+    border-color: var(--border);
+  }
+
+  /* Category icon active/inactive */
+  .cat-icon-active { color: white !important; }
+  .cat-icon-inactive { color: var(--ink-faint) !important; }
 </style>
 </head>
 
-<body class="min-h-screen" x-data="kasirApp()" x-init="init()">
-
+<body class="min-h-screen bg-[var(--bg)]" x-data="kasirApp()" x-init="init()">
   <!-- =========================================================
        HEADER
   ========================================================== -->
-  <header class="sticky top-0 z-30 bg-[var(--surface)]/95 backdrop-blur border-b border-[var(--border)]">
+  <header class="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-[var(--border)] shadow-sm">
     <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <!-- LOGO TAMPIL DISINI -->
-         <img src="icons/icon-192.png" alt="Logo Koperasi" class="w-9 h-9 rounded-xl object-cover shrink-0">
-       
-         <div class="leading-tight">
-          <p class="font-semibold text-[15px] text-[var(--ink)]">Katalog Koperasi</p>
-          <p class="text-[11px] text-[var(--ink-muted)]" x-text="lastSyncedLabel"></p>
+        <div class="relative w-9 h-9 rounded-xl overflow-hidden ring-1 ring-[var(--border)]">
+          <img src="icons/icon-192.png" alt="Logo Shofa Mart" class="w-full h-full object-cover">
+        </div>
+        <div class="leading-tight min-w-0">
+          <p class="font-bold text-[15px] text-[var(--ink)] truncate">Shofa Mart</p>
+          <p class="text-[10.5px] text-[var(--ink-muted)] truncate" x-text="lastSyncedLabel"></p>
         </div>
       </div>
 
-      <div class="flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full"
-           :class="online ? 'bg-[var(--primary-tint)]' : 'bg-[var(--accent-tint)]'">
-        <span class="w-2 h-2 rounded-full" :class="online ? 'bg-[var(--online)] dot-online' : 'bg-[var(--offline)]'"></span>
-        <span class="text-[11px] font-medium" :class="online ? 'text-[var(--primary-dark)]' : 'text-[var(--offline)]'" x-text="online ? 'Online' : 'Offline'"></span>
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+           :class="online ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'">
+        <span class="w-2 h-2 rounded-full" :class="online ? 'bg-emerald-500 dot-online' : 'bg-amber-500'"></span>
+        <span class="text-[10px] font-semibold" x-text="online ? 'Online' : 'Offline'"></span>
       </div>
     </div>
   </header>
@@ -118,161 +185,192 @@
   <main class="max-w-md mx-auto px-4 pb-10">
 
     <!-- =========================================================
-         SEARCH BAR
+         HERO / SEARCH AREA
     ========================================================== -->
-    <div class="pt-4">
+    <section class="pt-4 space-y-3">
+      <div class="text-center space-y-1">
+        <h1 class="text-[18px] font-extrabold text-[var(--ink)] tracking-tight">Katalog Harga</h1>
+        <p class="text-[12px] text-[var(--ink-muted)] font-medium">Cari barang & cek harga dengan cepat</p>
+      </div>
+
+      <div class="relative group">
+        <div class="absolute left-3.5 top-1/2 -translate-y-1/2">
+          <svg class="text-[var(--ink-faint)]" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <input
+          type="text" inputmode="search" x-ref="searchInput" x-model="query"
+          @input.debounce.150ms="runSearch()"
+          placeholder="Cari nama barang atau scan barcode..."
+          class="w-full pl-11 pr-12 py-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-sm text-[15px] placeholder:text-[var(--ink-faint)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)]/40 focus:border-[var(--primary)] transition-all"
+        />
+        <button x-show="query.length > 0" x-cloak @click="clearSearch()"
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full hover:bg-[var(--surface-sunken)] text-[var(--ink-muted)] flex items-center justify-center transition-colors" aria-label="Hapus pencarian">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+
       <div class="flex items-center gap-2">
-        <div class="relative flex-1">
-          <svg class="absolute left-3.5 top-1/2 -translate-y-1/2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5C6B64" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input
-            type="text" inputmode="search" x-ref="searchInput" x-model="query"
-            @input.debounce.150ms="runSearch()"
-            placeholder="Cari nama barang…"
-            class="w-full pl-11 pr-9 py-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[15px] placeholder:text-[var(--ink-faint)] shadow-[var(--shadow-card)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent"
-          />
-          <button x-show="query.length > 0" x-cloak @click="clearSearch()"
-                  class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Hapus pencarian">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5C6B64" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <button @click="scanBarcode()"
-                class="shrink-0 rounded-2xl bg-[var(--primary)] flex items-center justify-center active:scale-95 transition-transform shadow-[var(--shadow-card)]"
-                style="width:52px;height:52px;" aria-label="Scan barcode">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        <button @click="scanBarcode()" x-cloak
+                class="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--primary)]/20 text-[var(--primary-dark)] font-semibold shadow-sm transition-all hover:bg-[var(--primary-tint)]/40 active:scale-[0.98]"
+                aria-label="Scan barcode">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+          <span class="text-[14px]">Scan</span>
         </button>
       </div>
 
-      <p x-show="scanNotice" x-cloak x-transition class="mt-2 text-[12px] text-[var(--accent)] bg-[var(--accent-tint)] rounded-lg px-3 py-2" x-text="scanNotice"></p>
-    </div>
+      <p x-show="scanNotice" x-cloak x-transition class="text-[11.5px] text-[var(--accent-dark)] bg-[var(--accent-tint)]/60 border border-[var(--accent)]/20 rounded-xl px-3 py-2">
+        <span x-text="scanNotice"></span>
+      </p>
+    </section>
 
     <!-- =========================================================
-         TOOLBAR: label hasil + toggle tampilan Grid/List
+         CATEGORY QUICK ACCESS
     ========================================================== -->
-    <div class="flex items-center justify-between pt-4 pb-1">
-      <div class="flex items-center gap-2 min-w-0">
-        <button x-show="isSearchActive" x-cloak @click="goHome()"
-                class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center shrink-0" aria-label="Kembali ke beranda">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-dark)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
-        </button>
-        <p class="text-[13px] font-medium text-[var(--ink-muted)] truncate" x-text="isSearchActive ? resultsLabel : 'Tampilan'"></p>
+    <section x-show="!isScanResult && query.trim().length === 0" x-cloak class="pt-2">
+      <div class="flex items-center justify-between mb-2.5">
+        <p class="text-[13px] font-bold text-[var(--ink-muted)]">Kategori</p>
       </div>
-      <div class="flex items-center gap-1 p-1 rounded-xl bg-[var(--surface-sunken)]">
-        <button @click="setViewMode('list')" :class="viewMode === 'list' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
-                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan list">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-        </button>
-        <button @click="setViewMode('grid')" :class="viewMode === 'grid' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
-                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan grid">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-        </button>
-      </div>
-    </div>
 
-    <!-- =========================================================
-         QUICK ACCESS
-    ========================================================== -->
-    <section x-show="!isSearchActive" x-cloak class="pt-1 pb-1">
-      <p class="text-[13px] font-medium text-[var(--ink-muted)] mb-2.5 px-0.5">Akses Cepat — Barang Tanpa Barcode</p>
-
-      <template x-if="loading">
-        <div class="grid grid-cols-3 gap-2.5">
-          <template x-for="i in 6" :key="i"><div class="h-20 rounded-2xl skeleton"></div></template>
-        </div>
-      </template>
-
-      <div x-show="!loading" class="grid grid-cols-3 gap-2.5">
-        <template x-for="cat in quickAccessCategories" :key="cat.id">
-          <button @click="selectCategory(cat)"
-                  class="h-20 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-colors"
-                  :class="selectedCategory && selectedCategory.id === cat.id ? 'bg-[var(--primary)] border-[var(--primary)]' : 'bg-[var(--surface)] border-[var(--border)] shadow-[var(--shadow-card)] active:bg-[var(--surface-sunken)]'">
-            <span x-html="getIcon(cat.icon, selectedCategory && selectedCategory.id === cat.id)"></span>
-            <span class="text-[11.5px] font-medium leading-tight text-center px-1"
-                  :class="selectedCategory && selectedCategory.id === cat.id ? 'text-white' : 'text-[var(--ink)]'" x-text="cat.name"></span>
+      <div class="relative">
+        <div class="flex gap-2 pb-1 overflow-x-auto no-scrollbar">
+          <!-- All category chip -->
+          <button @click="goHome()" :class="!selectedCategory ? 'active' : 'inactive'"
+                  class="category-chip px-3.5 py-1.5 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 shadow-sm shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 11 4-6"/><path d="m19 11-4-6"/><path d="M2 11h20l-1.6 8.2a2 2 0 0 1-2 1.8H5.6a2 2 0 0 1-2-1.8L2 11Z"/><path d="M12 16v-3"/></svg>
+            <span>Semua</span>
           </button>
-        </template>
+
+          <template x-if="loading">
+            <template x-for="i in 6" :key="i">
+              <div class="category-chip w-20 py-2 rounded-xl skeleton shrink-0"></div>
+            </template>
+          </template>
+
+          <template x-for="cat in quickAccessCategories" :key="cat.id">
+            <button @click="selectCategory(cat)" :class="selectedCategory && selectedCategory.id === cat.id ? 'active' : 'inactive'"
+                    class="category-chip px-3.5 py-1.5 rounded-xl border text-[12px] font-semibold flex items-center gap-1.5 shadow-sm shrink-0">
+              <span :class="selectedCategory && selectedCategory.id === cat.id ? 'cat-icon-active' : 'cat-icon-inactive'" x-html="getIcon(cat.icon, false, 13)"></span>
+              <span x-text="cat.name"></span>
+            </button>
+          </template>
+        </div>
       </div>
 
-      <div x-show="selectedCategory" x-cloak class="mt-2.5">
-        <button @click="clearCategory()" class="text-[12.5px] font-medium text-[var(--primary-dark)] flex items-center gap-1">
+      <div x-show="selectedCategory && selectedCategory.id !== 0" x-cloak class="mt-3">
+        <button @click="clearCategory()" class="flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--primary-dark)]">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
-          Tutup filter kategori
+          <span>Hapus filter kategori</span>
         </button>
       </div>
     </section>
 
     <!-- =========================================================
-         HASIL PENCARIAN
+         RESULTS HEADER + COUNT
+    ========================================================== -->
+    <section class="pt-3 flex items-center justify-between">
+      <div class="flex items-center gap-2 min-w-0">
+        <button x-show="isSearchActive" x-cloak @click="goHome()"
+                class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] flex items-center justify-center shrink-0 transition-colors" aria-label="Kembali ke beranda">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary-dark)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        </button>
+        <p class="text-[13.5px] font-bold text-[var(--ink)]" x-text="isSearchActive ? resultsLabel : 'Semua produk'"></p>
+      </div>
+
+      <!-- View toggle -->
+      <div class="flex items-center gap-1 p-1 rounded-xl bg-[var(--surface-sunken)]">
+        <button @click="setViewMode('grid')" :class="viewMode === 'grid' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan grid">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        </button>
+        <button @click="setViewMode('list')" :class="viewMode === 'list' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
+                class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan list">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         PRODUCT GRID
     ========================================================== -->
     <section class="pt-2">
-
-      <!-- Loading skeleton -->
-      <template x-if="loading">
-        <div>
-          <div x-show="viewMode === 'grid'" class="grid grid-cols-2 gap-3">
-            <template x-for="i in 4" :key="i">
-              <div class="rounded-2xl overflow-hidden card">
-                <div class="aspect-square skeleton"></div>
-                <div class="p-3 space-y-2">
-                  <div class="h-3.5 w-4/5 rounded skeleton"></div>
-                  <div class="h-3 w-2/5 rounded skeleton"></div>
-                  <div class="h-4 w-3/5 rounded skeleton"></div>
-                </div>
+      <!-- Loading skeleton grid -->
+      <template x-if="loading && viewMode === 'grid'">
+        <div class="grid grid-cols-2 gap-3.5">
+          <template x-for="i in 4" :key="i">
+            <div class="rounded-2xl overflow-hidden card">
+              <div class="aspect-square skeleton"></div>
+              <div class="p-3 space-y-2">
+                <div class="h-3.5 w-4/5 rounded skeleton"></div>
+                <div class="h-3 w-2/5 rounded skeleton"></div>
+                <div class="h-4 w-3/5 rounded skeleton"></div>
               </div>
-            </template>
-          </div>
-          <div x-show="viewMode === 'list'" class="space-y-2.5">
-            <template x-for="i in 3" :key="i">
-              <div class="flex gap-3 p-3 rounded-2xl card">
-                <div class="w-16 h-16 rounded-xl skeleton shrink-0"></div>
-                <div class="flex-1 space-y-2 py-1">
-                  <div class="h-3.5 w-3/5 rounded skeleton"></div>
-                  <div class="h-3 w-2/5 rounded skeleton"></div>
-                  <div class="h-4 w-1/3 rounded skeleton"></div>
-                </div>
-              </div>
-            </template>
-          </div>
+            </div>
+          </template>
         </div>
       </template>
 
-      <!-- Empty states -->
-      <div x-show="!loading && !isSearchActive" x-cloak class="text-center py-10 text-[var(--ink-muted)]">
-        <p class="text-[13.5px]">Ketik nama barang di atas, atau pilih kategori Akses Cepat.</p>
+      <!-- Loading skeleton list -->
+      <template x-if="loading && viewMode === 'list'">
+        <div class="space-y-3">
+          <template x-for="i in 3" :key="i">
+            <div class="flex gap-3.5 p-3 rounded-2xl card">
+              <div class="w-20 h-20 rounded-xl skeleton shrink-0"></div>
+              <div class="flex-1 space-y-2 py-0.5">
+                <div class="h-3.5 w-3/5 rounded skeleton"></div>
+                <div class="h-3 w-2/5 rounded skeleton"></div>
+                <div class="h-4 w-1/3 rounded skeleton"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Empty state: no search -->
+      <div x-show="!loading && !isSearchActive && results.length === 0 && !selectedCategory" x-cloak class="py-10 text-center space-y-2">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--surface-sunken)] text-[var(--ink-faint)] mb-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+        </div>
+        <p class="text-[14px] font-semibold text-[var(--ink)]">Cari barang di katalog</p>
+        <p class="text-[12px] text-[var(--ink-muted)]">Gunakan kolom pencarian di atas atau pilih kategori untuk melihat harga.</p>
       </div>
 
-      <div x-show="!loading && isSearchActive && results.length === 0" x-cloak class="text-center py-10">
-        <p class="text-[14px] font-medium text-[var(--ink)]">Barang tidak ditemukan</p>
-        <p class="text-[13px] text-[var(--ink-muted)] mt-1">Coba kata kunci lain atau periksa ejaan.</p>
+      <!-- Empty state: no results -->
+      <div x-show="!loading && isSearchActive && results.length === 0" x-cloak class="py-10 text-center space-y-2">
+        <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--surface-sunken)] text-[var(--ink-faint)] mb-2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </div>
+        <p class="text-[14px] font-semibold text-[var(--ink)]">Barang tidak ditemukan</p>
+        <p class="text-[12px] text-[var(--ink-muted)]">Coba kata kunci lain atau periksa ejaan.</p>
       </div>
 
       <!-- GRID VIEW -->
-      <div x-show="!loading && results.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 gap-3">
+      <div x-show="!loading && results.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 gap-3.5">
         <template x-for="p in results" :key="p.id">
           <article class="rounded-2xl overflow-hidden card">
-            <div class="relative aspect-square bg-[var(--surface-sunken)] cursor-pointer" @click="openZoom(p)">
+            <div class="relative aspect-square bg-[var(--surface-sunken)] rounded-t-2xl cursor-pointer" @click="openZoom(p)">
               <img x-show="p.image_url && !p._imgError" :src="p.image_url" loading="lazy" @error="p._imgError = true"
-                   class="w-full h-full object-cover" />
+                   class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
-                <span x-html="getIcon(categoryIcon(p.category), false, 30)"></span>
+                <span x-html="getIcon(categoryIcon(p.category), false, 36)"></span>
               </div>
-              <div x-show="p.image_url && !p._imgError" class="absolute bottom-1.5 right-1.5 w-6 h-6 rounded-full bg-black/45 flex items-center justify-center">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
+              <div x-show="p.image_url && !p._imgError" class="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6M8 11h6"/></svg>
               </div>
             </div>
-            <div class="p-3">
-              <h3 class="text-[14px] font-semibold text-[var(--ink)] leading-snug line-clamp-2" x-text="p.name"></h3>
-              <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span class="text-[10.5px] px-1.5 py-0.5 rounded-full bg-[var(--surface-sunken)] text-[var(--ink-muted)]" x-text="p.category"></span>
+            <div class="p-3 space-y-2">
+              <div class="space-y-1">
+                <h3 class="text-[15px] font-bold text-[var(--ink)] leading-snug line-clamp-2" x-text="p.name"></h3>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary-dark)] font-semibold border border-[var(--primary)]/10" x-text="p.category"></span>
+                </div>
               </div>
-              <div class="mt-2 space-y-0.5">
-                <template x-for="row in p.prices.slice(0,2)" :key="row.unit">
-                  <div class="flex items-baseline justify-between gap-1">
-                    <span class="text-[10.5px] text-[var(--ink-muted)]" x-text="row.unit"></span>
-                    <span class="text-[15px] font-extrabold text-[var(--accent)] tabular" x-text="formatRupiah(row.price_public)"></span>
-                  </div>
-                </template>
-                <p x-show="p.prices.length > 2" class="text-[10.5px] text-[var(--ink-faint)]" x-text="'+' + (p.prices.length - 2) + ' satuan lain'"></p>
+              <div class="space-y-0.5 pt-1" x-show="p.prices && p.prices.length">
+                <div class="flex items-baseline justify-between gap-1">
+                  <span class="text-[10px] text-[var(--ink-muted)] font-medium" x-text="p.prices[0]?.unit"></span>
+                  <span class="text-[21px] leading-none font-extrabold price-highlight tabular" x-text="formatRupiah(p.prices[0]?.price_public)"></span>
+                </div>
+                <p x-show="p.prices[0]?.price_member != null" class="text-[13px] text-[var(--ink-muted)] font-semibold text-right" x-text="'Anggota ' + formatRupiah(p.prices[0]?.price_member)"></p>
+                <p x-show="p.prices.length > 1" class="text-[10px] text-[var(--primary)] font-semibold" x-text="'+' + (p.prices.length - 1) + ' satuan lain'"></p>
               </div>
             </div>
           </article>
@@ -282,94 +380,101 @@
       <!-- LIST VIEW -->
       <div x-show="!loading && results.length > 0 && viewMode === 'list'" class="space-y-2.5">
         <template x-for="p in results" :key="p.id">
-          <article class="flex gap-3 p-3 rounded-2xl card">
-            <div class="relative w-16 h-16 rounded-xl overflow-hidden bg-[var(--surface-sunken)] shrink-0 cursor-pointer" @click="openZoom(p)">
+          <article class="flex gap-3.5 p-3.5 rounded-2xl card">
+            <div class="relative w-20 h-20 rounded-xl overflow-hidden bg-[var(--surface-sunken)] shrink-0 cursor-pointer" @click="openZoom(p)">
               <img x-show="p.image_url && !p._imgError" :src="p.image_url" loading="lazy" @error="p._imgError = true"
                    class="w-full h-full object-cover" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
-                <span x-html="getIcon(categoryIcon(p.category), false, 22)"></span>
+                <span x-html="getIcon(categoryIcon(p.category), false, 28)"></span>
               </div>
             </div>
 
-            <div class="min-w-0 flex-1">
-              <div class="flex items-start justify-between gap-2">
-                <h3 class="text-[14.5px] font-semibold text-[var(--ink)] leading-snug truncate" x-text="p.name"></h3>
-              </div>
-              <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span class="text-[10.5px] px-1.5 py-0.5 rounded-full bg-[var(--surface-sunken)] text-[var(--ink-muted)]" x-text="p.category"></span>
-                <span x-show="p.location_shelf" class="text-[10.5px] text-[var(--ink-muted)]" x-text="'· ' + p.location_shelf"></span>
+            <div class="min-w-0 flex-1 space-y-1.5 py-0.5">
+              <div class="space-y-0.5">
+                <h3 class="text-[15px] font-bold text-[var(--ink)] leading-snug truncate" x-text="p.name"></h3>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-[11px] px-1.5 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary-dark)] font-semibold border border-[var(--primary)]/10" x-text="p.category"></span>
+                  <span x-show="p.location_shelf" class="text-[11px] text-[var(--ink-muted)]" x-text="'· ' + p.location_shelf"></span>
+                </div>
               </div>
 
-              <div class="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
-                <template x-for="row in p.prices" :key="row.unit">
-                  <div class="flex items-baseline gap-1">
-                    <span class="text-[10.5px] text-[var(--ink-muted)]" x-text="row.unit + ':'"></span>
-                    <span class="text-[15.5px] font-extrabold text-[var(--accent)] tabular" x-text="formatRupiah(row.price_public)"></span>
-                  </div>
-                </template>
+              <div class="space-y-0.5 pt-0.5" x-show="p.prices && p.prices.length">
+                <div class="flex items-baseline gap-1.5">
+                  <span class="text-[10px] text-[var(--ink-muted)] font-medium" x-text="p.prices[0]?.unit"></span>
+                  <span class="text-[22px] leading-none font-extrabold price-highlight tabular" x-text="formatRupiah(p.prices[0]?.price_public)"></span>
+                </div>
+                <p x-show="p.prices[0]?.price_member != null" class="text-[13px] text-[var(--ink-muted)] font-semibold" x-text="'Anggota ' + formatRupiah(p.prices[0]?.price_member)"></p>
+
+                <div x-show="p.prices.length > 1" class="flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
+                  <template x-for="row in p.prices.slice(1)" :key="row.unit">
+                    <div class="flex items-baseline gap-1">
+                      <span class="text-[10px] text-[var(--ink-muted)] font-medium" x-text="row.unit + ':'"></span>
+                      <span class="text-[13px] font-bold price-highlight tabular" x-text="formatRupiah(row.price_public)"></span>
+                    </div>
+                  </template>
+                </div>
               </div>
             </div>
           </article>
         </template>
       </div>
     </section>
-
   </main>
 
   <!-- =========================================================
        ZOOM PHOTO MODAL
   ========================================================== -->
   <div x-show="zoomedProduct" x-cloak x-transition.opacity class="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-5" @click="closeZoom()">
-    <button @click.stop="closeZoom()" class="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 w-9 h-9 rounded-full bg-white/10 flex items-center justify-center" aria-label="Tutup">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+    <button @click.stop="closeZoom()" class="absolute top-[max(1rem,env(safe-area-inset-top))] right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur" aria-label="Tutup">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
     </button>
     <img x-show="zoomedProduct" :src="zoomedProduct?.image_url" @click.stop
-         class="max-w-full max-h-[70vh] rounded-2xl object-contain" />
-    <p class="text-white font-medium text-[15px] mt-4 text-center px-6" x-text="zoomedProduct?.name"></p>
-    <p class="text-white/60 text-[12.5px] mt-1" x-text="zoomedProduct?.category"></p>
+         class="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl" />
+    <p class="text-white font-semibold text-[16px] mt-4 text-center px-6" x-text="zoomedProduct?.name"></p>
+    <p class="text-white/70 text-[13px] mt-1" x-text="zoomedProduct?.category"></p>
   </div>
 
   <!-- =========================================================
        SCANNER OVERLAY
   ========================================================== -->
-  <div x-show="scannerOpen" x-cloak x-transition.opacity class="fixed inset-0 z-50 bg-black/95 flex flex-col">
+  <div x-show="scannerOpen" x-cloak x-transition.opacity class="fixed inset-0 z-[60] bg-[#0F172A] flex flex-col">
     <div class="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
-      <p class="text-white font-medium text-[15px]">Scan Barcode</p>
-      <button @click="closeScanner()" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center" aria-label="Tutup scanner">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+      <p class="text-white font-semibold text-[16px]">Scan Barcode</p>
+      <button @click="closeScanner()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur text-white" aria-label="Tutup scanner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
       </button>
     </div>
 
     <div class="flex-1 flex flex-col items-center justify-center px-5">
       <div x-show="scannerState === 'starting' || scannerState === 'active'" class="w-full max-w-sm">
-        <div id="qr-reader"></div>
-        <p x-show="scannerState === 'starting'" class="text-center text-white/60 text-[13px] mt-4">Membuka kamera…</p>
-        <p x-show="scannerState === 'active'" class="text-center text-white/60 text-[13px] mt-4">Arahkan kamera ke barcode produk</p>
+        <div id="qr-reader" class="rounded-2xl overflow-hidden shadow-2xl"></div>
+        <p x-show="scannerState === 'starting'" class="text-center text-white/70 text-[13.5px] mt-5">Membuka kamera…</p>
+        <p x-show="scannerState === 'active'" class="text-center text-white/70 text-[13.5px] mt-2">Arahkan kamera ke barcode produk</p>
       </div>
 
-      <div x-show="scannerState === 'camera-error'" x-cloak class="w-full max-w-xs text-center">
-        <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M9.5 4h5l1.5 2H19a2 2 0 0 1 2 2v9.5"/><path d="M20 20H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h.5"/><circle cx="12" cy="13" r="3.5"/></svg>
+      <div x-show="scannerState === 'camera-error'" x-cloak class="w-full max-w-xs text-center space-y-4">
+        <div class="w-18 h-18 rounded-full bg-white/10 flex items-center justify-center mx-auto">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M9.5 4h5l1.5 2H19a2 2 0 0 1 2 2v9.5"/><path d="M20 20H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h.5"/><circle cx="12" cy="13" r="3.5"/></svg>
         </div>
-        <p class="text-white font-medium text-[15px]">Kamera tidak bisa diakses</p>
-        <p class="text-white/60 text-[13px] mt-1.5 leading-relaxed">Hal ini sering terjadi di iOS Safari atau saat app dibuka lewat "Add to Home Screen". Kamu tetap bisa cari barang lewat nama.</p>
-        <button @click="goToManualSearch()" class="mt-5 w-full py-3 rounded-xl bg-white text-[var(--primary-dark)] font-semibold text-[14px]">Gunakan Pencarian Teks</button>
-        <button @click="startCamera()" class="mt-2.5 w-full py-3 rounded-xl bg-white/10 text-white font-medium text-[13.5px]">Coba Lagi</button>
+        <p class="text-white font-semibold text-[15px]">Kamera tidak bisa diakses</p>
+        <p class="text-white/70 text-[13px] leading-relaxed">Hal ini sering terjadi di iOS Safari atau saat app dibuka lewat "Add to Home Screen". Kamu tetap bisa cari barang lewat nama.</p>
+        <button @click="goToManualSearch()" class="mt-4 w-full py-3.5 rounded-2xl bg-white text-[var(--primary-dark)] font-bold text-[14px]">Gunakan Pencarian Teks</button>
+        <button @click="startCamera()" class="mt-2.5 w-full py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-[13.5px]">Coba Lagi</button>
       </div>
 
-      <div x-show="scannerState === 'not-found'" x-cloak class="w-full max-w-xs text-center">
-        <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M14 9v2M14 15v0M17 9v6"/></svg>
+      <div x-show="scannerState === 'not-found'" x-cloak class="w-full max-w-xs text-center space-y-4">
+        <div class="w-18 h-18 rounded-full bg-white/10 flex items-center justify-center mx-auto">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M14 9v2M14 15v0M17 9v6"/></svg>
         </div>
-        <p class="text-white font-medium text-[15px]">Barang tidak ditemukan</p>
-        <p class="text-white/60 text-[13px] mt-1.5 leading-relaxed">Barcode <span class="text-white font-mono" x-text="lastScannedBarcode"></span> tidak terdaftar. Cari manual via nama produk?</p>
-        <button @click="goToManualSearch()" class="mt-5 w-full py-3 rounded-xl bg-white text-[var(--primary-dark)] font-semibold text-[14px]">Cari Manual</button>
-        <button @click="resumeScanning()" class="mt-2.5 w-full py-3 rounded-xl bg-white/10 text-white font-medium text-[13.5px]">Scan Lagi</button>
+        <p class="text-white font-semibold text-[15px]">Barang tidak ditemukan</p>
+        <p class="text-white/70 text-[13px] leading-relaxed">Barcode <span class="text-white font-mono" x-text="lastScannedBarcode"></span> tidak terdaftar. Cari manual via nama produk?</p>
+        <button @click="goToManualSearch()" class="mt-4 w-full py-3.5 rounded-2xl bg-white text-[var(--primary-dark)] font-bold text-[14px]">Cari Manual</button>
+        <button @click="resumeScanning()" class="mt-2.5 w-full py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-[13.5px]">Scan Lagi</button>
       </div>
     </div>
 
     <div class="px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
-      <button @click="closeScanner()" class="w-full py-3 rounded-xl bg-white/10 text-white font-medium text-[13.5px]">Batal</button>
+      <button @click="closeScanner()" class="w-full py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-[13.5px]">Batal</button>
     </div>
   </div>
 
@@ -414,10 +519,6 @@
         zoomedProduct: null,
 
         // ---- navigasi/back-stack (home <-> browsing <-> overlay) ----
-        // Cermin dari entri history yang KITA buat sendiri. Selalu diawali ["home"].
-        // Satu-satunya tempat yang boleh melakukan .pop() adalah listener popstate;
-        // di tempat lain kita hanya boleh push/replace, supaya tidak pernah desync
-        // dengan window.history yang sesungguhnya.
         _nav: ["home"],
 
         // ---- scanner state ----
@@ -433,13 +534,10 @@
           window.addEventListener("online", () => { this.online = true; this.loadData(); });
           window.addEventListener("offline", () => { this.online = false; });
 
-          // ---- History API: tandai entri pertama sebagai "home" ----
           history.replaceState({ koperasiView: "home" }, "");
           this._nav = ["home"];
 
           window.addEventListener("popstate", (event) => {
-            // Pengaman: kalau shadow stack kita cuma berisi "home", tidak ada lagi
-            // yang bisa di-pop dari sisi app — reset penuh ke kondisi awal.
             if (this._nav.length <= 1) {
               this._nav = ["home"];
               this.closeScannerInternal();
@@ -459,12 +557,10 @@
           this.loadData();
         },
 
-        // Dorong level baru ke history (dipakai saat MEMBUKA sesuatu: browsing/scanner/zoom)
         navPush(view) {
           this._nav.push(view);
           history.pushState({ koperasiView: view }, "");
         },
-        // Ganti label level PUNCAK tanpa menambah depth (tidak memicu popstate)
         navReplace(view) {
           this._nav[this._nav.length - 1] = view;
           history.replaceState({ koperasiView: view }, "");
@@ -542,10 +638,10 @@
           if (this.query.trim().length > 0) {
             this.selectedCategory = null;
             this.results = this.fuse ? this.fuse.search(this.query.trim()).map((r) => r.item).slice(0, 30) : [];
-          } else if (this.selectedCategory) {
+          } else if (this.selectedCategory && this.selectedCategory.id !== 0) {
             this.results = this.allProducts.filter((p) => p.category === this.selectedCategory.name);
           } else {
-            this.results = [];
+            this.results = this.allProducts;
           }
           this.syncHistoryState();
         },
@@ -554,7 +650,7 @@
           this.query = "";
           this.selectedCategory = null;
           this.isScanResult = false;
-          this.results = [];
+          this.results = this.allProducts;
         },
 
         syncHistoryState() {
@@ -563,15 +659,14 @@
           if (active && top !== "browsing") {
             this.navPush("browsing");
           } else if (!active && top === "browsing") {
-            history.back(); // popstate akan pop "browsing" & memanggil resetViewState()
+            history.back();
           }
         },
 
         goHome() {
-          // dipanggil dari tombol "Kembali ke Beranda"
-          this.resetViewState(); // update UI instan
+          this.resetViewState();
           if (this._nav[this._nav.length - 1] === "browsing") {
-            history.back(); // selaraskan history (popstate akan no-op karena state sudah direset)
+            history.back();
           }
         },
 
@@ -596,7 +691,7 @@
           this.navPush("zoom");
         },
         closeZoom() {
-          this.zoomedProduct = null; // instan, tidak perlu nunggu popstate
+          this.zoomedProduct = null;
           if (this._nav[this._nav.length - 1] === "zoom") {
             history.back();
           }
@@ -649,12 +744,8 @@
         showScannedProduct(product) {
           this.query = ""; this.selectedCategory = null; this.isScanResult = true;
           this.results = [product];
-          this.closeScannerInternal(); // tutup kamera langsung, tanpa navigasi history
+          this.closeScannerInternal();
 
-          // Gantikan level "scanner" yang lagi aktif jadi "browsing" (hasil scan).
-          // Kalau tepat di bawah scanner sudah ada level "browsing" (mis. scan dilakukan
-          // saat sedang browsing), cukup pop scanner-nya lewat history.back() supaya
-          // depth stack tidak bertambah dan tidak terjadi race dengan popstate.
           const top = this._nav[this._nav.length - 1];
           const below = this._nav[this._nav.length - 2];
           if (top === "scanner" && below === "browsing") {
@@ -692,10 +783,9 @@
         },
 
         closeScanner() {
-          // dipanggil dari tombol X / Batal di UI
-          this.closeScannerInternal(); // langsung, biar responsif tanpa nunggu popstate
+          this.closeScannerInternal();
           if (this._nav[this._nav.length - 1] === "scanner") {
-            history.back(); // selaraskan history; popstate akan panggil closeScannerInternal lagi (no-op)
+            history.back();
           }
         },
 
@@ -740,7 +830,7 @@
         get lastSyncedLabel() {
           if (!this.lastSynced) return "Belum tersinkron";
           const time = this.lastSynced.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-          return `Data terakhir diperbarui: ${time}`;
+          return `Data terakhir: ${time}`;
         },
       };
     }

@@ -19,19 +19,47 @@
 
 <style>
   :root{
-    --bg:            #F5F6F1;
+    /* Backgrounds & Surface */
+    --bg:            #F4F8FA;
     --surface:       #FFFFFF;
-    --surface-sunken:#EEF1EC;
-    --ink:           #1B231F;
-    --ink-muted:     #5C6B64;
-    --border:        #DDE3DC;
-    --primary:       #0E6E5A;
-    --primary-dark:  #0A4F41;
-    --primary-tint:  #E4F0EC;
-    --accent:        #B4530A;
-    --accent-tint:   #F7E9DC;
-    --danger:        #B42318;
-    --danger-tint:   #FBEAE8;
+    --surface-sunken:#EEF4F7;
+    --surface-raised:#FFFFFF;
+
+    /* Typography & Ink */
+    --ink:           #0F172A;
+    --ink-muted:     #64748B;
+    --ink-faint:     #94A3B8;
+
+    /* Borders & Dividers */
+    --border:        #E2E8F0;
+    --border-strong: #CBD5E1;
+
+    /* Brand Primary: SHОFA MART OCEAN */
+    --primary:       #075985;
+    --primary-dark:  #0C4A6E;
+    --primary-light: #0284C7;
+    --primary-tint:  #E4F0F7;
+
+    /* Accent: restrained warm gold */
+    --accent:        #F59E0B;
+    --accent-dark:   #B45309;
+    --accent-tint:   #FEF3C7;
+
+    /* Semantic States */
+    --online:        #10B981;
+    --offline:       #F59E0B;
+    --success:       #16A34A;
+    --success-tint:  #DCFCE7;
+    --warning:       #D97706;
+    --warning-tint:  #FEF3E2;
+    --danger:        #DC2626;
+    --danger-tint:   #FEE2E2;
+
+    /* Elevational Shadows */
+    --shadow-card:   0 1px 2px rgba(15,23,42,0.04), 0 4px 14px rgba(15,23,42,0.05);
+    --shadow-sm:     0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md:     0 2px 4px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.08);
+    --shadow-lg:     0 4px 8px rgba(15,23,42,0.08), 0 8px 24px rgba(15,23,42,0.12);
   }
 
   html, body {
@@ -43,6 +71,8 @@
   [x-cloak] { display: none !important; }
 
   table { border-collapse: collapse; }
+  tbody tr { transition: background-color 150ms ease, opacity 150ms ease; }
+  tbody tr:hover { background: #F8FBFD; }
   .admin-input {
     width: 100%;
     padding: 0.55rem 0.75rem;
@@ -53,38 +83,66 @@
   }
   .admin-input:focus { outline: none; box-shadow: 0 0 0 2px var(--primary); border-color: transparent; }
   .admin-label { font-size: 12.5px; font-weight: 500; color: var(--ink-muted); margin-bottom: 0.3rem; display: block; }
+  .admin-nav-item { display: flex; align-items: center; min-height: 44px; padding: 0.65rem 0.75rem; border-radius: 0.7rem; color: #94A3B8; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 150ms ease; }
+  .admin-nav-item:hover { background: rgba(7, 89, 133, 0.15); color: #E0F2FE; }
+  .admin-nav-active { background: linear-gradient(135deg, #075985 0%, #0284C7 100%); color: white; box-shadow: 0 2px 8px rgba(7, 89, 133, 0.3); }
+
+  /* Button hierarchy */
+  .btn-primary { padding: 0.6rem 1.1rem; border-radius: 0.75rem; background: var(--primary); color: white; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 150ms ease; box-shadow: 0 1px 3px rgba(7, 89, 133, 0.2); }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-dark); box-shadow: 0 2px 6px rgba(7, 89, 133, 0.3); transform: translateY(-1px); }
+  .btn-primary:active:not(:disabled) { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .btn-secondary { padding: 0.6rem 1.1rem; border-radius: 0.75rem; background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 500; border: 1px solid var(--border-strong); cursor: pointer; transition: all 150ms ease; }
+  .btn-secondary:hover:not(:disabled) { background: var(--surface-sunken); border-color: var(--ink-muted); box-shadow: var(--shadow-sm); }
+
+  .btn-ghost { padding: 0.6rem 1.1rem; border-radius: 0.75rem; background: transparent; color: var(--ink-muted); font-size: 13px; font-weight: 500; border: 1px solid var(--border); cursor: pointer; transition: all 150ms ease; }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-sunken); color: var(--ink); border-color: var(--border-strong); }
+
+  .btn-danger { padding: 0.55rem 1rem; border-radius: 0.75rem; background: transparent; color: var(--danger); font-size: 13px; font-weight: 500; border: 1px solid var(--danger); cursor: pointer; transition: all 150ms ease; }
+  .btn-danger:hover:not(:disabled) { background: var(--danger); color: white; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25); }
+
+  .btn-sm { padding: 0.35rem 0.65rem; font-size: 11.5px; border-radius: 0.5rem; }
+
+  .form-section-title { font-size: 11.5px; font-weight: 700; color: var(--primary-dark); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.85rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--primary-tint); }
+
+  @media (max-width: 640px) {
+    .price-row-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+    .price-row-grid input { width: 100%; }
+    .price-row-grid button { align-self: flex-end; }
+  }
 </style>
 </head>
 
-<body class="min-h-screen" x-data="adminApp()" x-init="init()">
+<body class="min-h-screen bg-[var(--bg)]" x-data="adminApp()" x-init="init()">
 
   <!-- =========================================================
        LOGIN VIEW
   ========================================================== -->
-  <div x-show="!session" x-cloak class="min-h-screen flex items-center justify-center px-4">
+  <div x-show="!session" x-cloak class="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50">
     <div class="w-full max-w-sm">
       <div class="text-center mb-7">
-        <div class="w-14 h-14 rounded-2xl bg-[var(--primary)] mx-auto flex items-center justify-center mb-3">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#075985] to-[#0284C7] mx-auto flex items-center justify-center mb-4 shadow-xl shadow-[#075985]/30">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
         </div>
-        <h1 class="text-[19px] font-semibold text-[var(--ink)]">Admin Katalog Koperasi</h1>
-        <p class="text-[13.5px] text-[var(--ink-muted)] mt-1">Masuk untuk mengelola data barang & harga</p>
+        <h1 class="text-[20px] font-bold text-[var(--ink)] tracking-tight">Admin Shofa Mart</h1>
+        <p class="text-[13.5px] text-[var(--ink-muted)] mt-1.5">Masuk untuk mengelola katalog koperasi</p>
       </div>
 
-      <form @submit.prevent="login()" class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 space-y-3.5">
+      <form @submit.prevent="login()" class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 space-y-3.5 shadow-xl">
         <div>
           <label class="admin-label">Email</label>
-          <input type="email" x-model="loginEmail" required autocomplete="username" class="admin-input" placeholder="admin@koperasi.id" />
+          <input type="email" x-model="loginEmail" required autocomplete="username" class="admin-input" placeholder="admin@shofamart.id" />
         </div>
         <div>
           <label class="admin-label">Password</label>
           <input type="password" x-model="loginPassword" required autocomplete="current-password" class="admin-input" placeholder="••••••••" />
         </div>
 
-        <p x-show="loginError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="loginError"></p>
+        <p x-show="loginError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2 border border-[var(--danger)]/20" x-text="loginError"></p>
 
         <button type="submit" :disabled="loginLoading"
-                class="w-full py-2.5 rounded-xl bg-[var(--primary)] text-white font-semibold text-[14px] disabled:opacity-60">
+                class="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#075985] to-[#0284C7] text-white font-semibold text-[14px] disabled:opacity-60 shadow-lg shadow-[#075985]/25 hover:shadow-xl hover:shadow-[#075985]/30 transition-all">
           <span x-show="!loginLoading">Masuk</span>
           <span x-show="loginLoading" x-cloak>Memproses…</span>
         </button>
@@ -97,22 +155,80 @@
   ========================================================== -->
   <div x-show="session" x-cloak>
 
-    <header class="sticky top-0 z-30 bg-[var(--surface)] border-b border-[var(--border)]">
+    <!-- Desktop sidebar / mobile navigation -->
+    <aside class="admin-sidebar hidden md:flex fixed inset-y-0 left-0 z-20 w-60 flex-col bg-slate-900 text-white border-r border-slate-800 p-5 shadow-xl">
+      <div class="flex items-center gap-2.5 mb-8">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#075985] to-[#0284C7] flex items-center justify-center shrink-0 shadow-lg shadow-[#075985]/40">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1 1v-9"/></svg>
+        </div>
+        <div><p class="font-bold text-[15px] tracking-tight text-white">Shofa Mart</p><p class="text-[11px] text-slate-400">Admin Katalog</p></div>
+      </div>
+      <nav class="space-y-1" aria-label="Navigasi admin">
+        <a href="#produk" class="admin-nav-item admin-nav-active">Produk</a>
+        <button type="button" @click="masterModalOpen = true" class="admin-nav-item w-full text-left">Master Produk</button>
+      </nav>
+      <div class="mt-auto pt-5 border-t border-slate-800">
+        <button type="button" @click="logout()" class="admin-nav-item w-full text-left text-rose-300 hover:bg-rose-950/30">Keluar</button>
+      </div>
+    </aside>
+
+    <div x-show="mobileMenuOpen" x-cloak class="fixed inset-0 z-40 md:hidden" @click="mobileMenuOpen = false">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <aside class="relative w-72 max-w-[85vw] h-full bg-slate-900 text-white p-5 shadow-2xl border-r border-slate-800" @click.stop>
+        <div class="flex items-center justify-between mb-8">
+          <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#075985] to-[#0284C7] flex items-center justify-center shrink-0 shadow-lg">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
+            </div>
+            <div><p class="font-bold text-[14px] text-white">Shofa Mart</p><p class="text-[11px] text-slate-400">Admin Katalog</p></div>
+          </div>
+          <button type="button" @click="mobileMenuOpen = false" class="w-11 h-11 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center text-2xl" aria-label="Tutup menu">×</button>
+        </div>
+        <nav class="space-y-1" aria-label="Navigasi admin mobile">
+          <a href="#produk" @click="mobileMenuOpen = false" class="admin-nav-item admin-nav-active">Produk</a>
+          <button type="button" @click="masterModalOpen = true; mobileMenuOpen = false" class="admin-nav-item w-full text-left">Master Produk</button>
+        </nav>
+      </aside>
+    </div>
+
+    <header id="produk" class="sticky top-0 z-30 md:ml-60 bg-slate-900 text-white border-b border-slate-800 shadow-sm">
       <div class="max-w-6xl mx-auto px-5 py-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-[var(--primary)] flex items-center justify-center shrink-0">
+          <button type="button" @click="mobileMenuOpen = true" class="md:hidden w-11 h-11 -ml-2 rounded-xl hover:bg-slate-800 text-slate-200" aria-label="Buka menu">☰</button>
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-[#075985] to-[#0284C7] flex items-center justify-center shrink-0 shadow-md">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6"/><path d="M5 10v9a1 1 0 0 0 1 1h3v-6h6v6h3a1 1 0 0 0 1-1v-9"/></svg>
           </div>
-          <p class="font-semibold text-[14.5px]">Admin — Katalog Koperasi</p>
+          <p class="font-semibold text-[14.5px] text-white">Admin — Shofa Mart</p>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-[12.5px] text-[var(--ink-muted)] hidden sm:inline" x-text="session?.user?.email"></span>
-          <button @click="logout()" class="text-[12.5px] font-medium px-3 py-1.5 rounded-lg border border-[var(--border)] hover:bg-[var(--surface-sunken)]">Keluar</button>
+          <span class="text-[12.5px] text-slate-400 hidden sm:inline" x-text="session?.user?.email"></span>
+          <button @click="logout()" class="text-[12.5px] font-medium px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-slate-200 transition-colors">Keluar</button>
         </div>
       </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-5 py-5">
+    <main class="md:ml-60 max-w-6xl mx-auto px-5 py-5">
+
+      <!-- Dashboard summary -->
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5" aria-label="Ringkasan admin">
+        <template x-for="stat in [
+          { label: 'Produk Aktif', value: activeProductCount, icon: '✓', tone: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Produk Nonaktif', value: inactiveProductCount, icon: '○', tone: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Total Master Produk', value: masterProductCount, icon: '▦', tone: 'text-[#075985]', bg: 'bg-[#E4F0F7]' },
+          { label: 'Total Kategori', value: categoryCount, icon: '⌘', tone: 'text-[#B45309]', bg: 'bg-[#FEF3C7]' }
+        ]" :key="stat.label">
+          <div class="rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] p-3.5 shadow-[var(--shadow-sm)] min-h-[94px]">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-[11.5px] leading-4 text-[var(--ink-muted)]" x-text="stat.label"></p>
+              <span class="text-lg leading-none font-bold" :class="stat.tone" x-text="stat.icon" aria-hidden="true"></span>
+            </div>
+            <template x-if="statsLoading">
+              <div class="mt-3 h-7 w-16 rounded-md bg-[var(--surface-sunken)] animate-pulse" aria-label="Memuat statistik"></div>
+            </template>
+            <strong x-show="!statsLoading" class="block mt-2 text-2xl leading-none tracking-tight text-[var(--ink)] font-bold" x-text="stat.value.toLocaleString('id-ID')"></strong>
+          </div>
+        </template>
+      </section>
 
       <!-- Toolbar -->
       <div class="flex flex-wrap items-center gap-2.5 mb-4">
@@ -136,32 +252,32 @@
         </select>
 
         <div class="flex-1 flex justify-end">
-          <button @click="masterModalOpen = true" class="px-3.5 py-2 rounded-xl border-2 border-[var(--primary)] text-[var(--primary-dark)] bg-[var(--primary-tint)] text-[13px] font-bold shadow-sm mr-2">
+          <button @click="masterModalOpen = true" class="btn-secondary">
             Database Master Produk
           </button>
         </div>
 
-        <button @click="openAddModal()" class="px-3.5 py-2 rounded-xl bg-[var(--primary)] text-white text-[13px] font-semibold">
+        <button @click="openAddModal()" class="btn-primary">
           + Tambah Produk
         </button>
-        <button @click="$refs.csvFileInput.click()" class="px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] font-medium">
+        <button @click="$refs.csvFileInput.click()" class="btn-secondary">
           Import CSV
         </button>
         <input type="file" x-ref="csvFileInput" accept=".csv" class="hidden" @change="handleCsvFile($event)" />
-        <button @click="exportCsv()" class="px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] font-medium">
+        <button @click="exportCsv()" class="btn-ghost">
           Export CSV
         </button>
-        <button @click="downloadTemplate()" class="text-[12px] text-[var(--primary-dark)] underline underline-offset-2">
+        <button @click="downloadTemplate()" class="btn-ghost">
           Unduh Template CSV
         </button>
       </div>
 
       <!-- Table -->
-      <div class="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--surface)]">
+      <div class="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--surface)] shadow-[var(--shadow-card)]">
         <div class="overflow-x-auto">
           <table class="w-full text-[13px]">
             <thead>
-              <tr class="bg-[var(--surface-sunken)] text-left text-[11.5px] uppercase tracking-wide text-[var(--ink-muted)]">
+              <tr class="bg-[#F1F8FC] text-left text-[11.5px] uppercase tracking-wide text-[var(--primary-dark)] border-b border-[var(--border)]">
                 <th class="px-4 py-2.5 font-medium">Nama</th>
                 <th class="px-4 py-2.5 font-medium">Kategori</th>
                 <th class="px-4 py-2.5 font-medium">Barcode</th>
@@ -222,8 +338,10 @@
                   </td>
                   <td class="px-4 py-2.5">
                     <div class="flex flex-col gap-1.5">
-                      <button @click="openEditModal(p)" class="text-[12px] font-medium text-[var(--primary-dark)]">Edit</button>
-                      <button @click="toggleActive(p)" class="text-[12px] font-medium text-[var(--ink-muted)]" x-text="p.is_active ? 'Nonaktifkan' : 'Aktifkan'"></button>
+                      <button @click="openEditModal(p)" class="btn-secondary btn-sm text-center">Edit</button>
+                      <button @click="toggleActive(p)" class="btn-sm text-center"
+                              :class="p.is_active ? 'btn-danger' : 'btn-primary'"
+                              x-text="p.is_active ? 'Nonaktifkan' : 'Aktifkan'"></button>
                     </div>
                   </td>
                 </tr>
@@ -234,12 +352,12 @@
       </div>
 
       <!-- Pagination -->
-      <div class="flex items-center justify-between mt-3.5 text-[12.5px] text-[var(--ink-muted)]">
+      <div class="flex flex-wrap items-center justify-between gap-2 mt-3.5 text-[12.5px] text-[var(--ink-muted)]">
         <p x-text="paginationLabel"></p>
         <div class="flex items-center gap-2">
-          <button @click="prevPage()" :disabled="page <= 1" class="px-3 py-1.5 rounded-lg border border-[var(--border)] disabled:opacity-40">Sebelumnya</button>
-          <span x-text="`Halaman ${page} / ${totalPages}`"></span>
-          <button @click="nextPage()" :disabled="page >= totalPages" class="px-3 py-1.5 rounded-lg border border-[var(--border)] disabled:opacity-40">Berikutnya</button>
+          <button @click="prevPage()" :disabled="page <= 1" class="btn-ghost btn-sm disabled:opacity-40">Sebelumnya</button>
+          <span class="font-medium text-[var(--primary-dark)]" x-text="`Halaman ${page} / ${totalPages}`"></span>
+          <button @click="nextPage()" :disabled="page >= totalPages" class="btn-ghost btn-sm disabled:opacity-40">Berikutnya</button>
         </div>
       </div>
     </main>
@@ -248,7 +366,7 @@
   <!-- =========================================================
        MODAL: TAMBAH / EDIT PRODUK
   ========================================================== -->
-  <div x-show="productModalOpen" x-cloak class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4">
+  <div x-show="productModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
     <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
         <h2 class="text-[15.5px] font-semibold" x-text="editingProduct && editingProduct.id ? 'Edit Produk' : 'Tambah Produk'"></h2>
@@ -259,7 +377,10 @@
 
       <form @submit.prevent="saveProduct()" class="px-5 py-4 space-y-3.5" x-show="editingProduct">
         <input type="hidden" x-model="editingProduct.master_product_id" />
-        <div>
+
+        <section class="border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+          <h3 class="form-section-title">Informasi Produk</h3>
+          <div>
           <label class="admin-label">Nama Produk *</label>
           <input type="text" x-model="editingProduct.name" required class="admin-input" placeholder="mis. Indomie Goreng" />
         </div>
@@ -292,52 +413,42 @@
           <input type="text" x-model="editingProduct.aliasText" class="admin-input" placeholder="mis. miegor, indomie" />
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="admin-label">Barcode (opsional)</label>
             <input type="text" x-model="editingProduct.barcode" class="admin-input" placeholder="Kosongkan jika tanpa barcode" />
           </div>
-          <div>
-            <label class="admin-label">Kategori *</label>
-            <select x-model="editingProduct.category_id" required class="admin-input">
-              <template x-for="cat in allCategories" :key="cat.id">
-                <option :value="cat.id" x-text="cat.name"></option>
-              </template>
-            </select>
-          </div>
         </div>
+        </section>
 
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="admin-label">Lokasi Rak</label>
-            <input type="text" x-model="editingProduct.location_shelf" class="admin-input" placeholder="mis. Rak A1" />
+        <section class="border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+          <h3 class="form-section-title">Kategori & Lokasi</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="admin-label">Kategori *</label>
+              <select x-model="editingProduct.category_id" required class="admin-input">
+                <template x-for="cat in allCategories" :key="cat.id">
+                  <option :value="cat.id" x-text="cat.name"></option>
+                </template>
+              </select>
+            </div>
+            <div>
+              <label class="admin-label">Lokasi Rak</label>
+              <input type="text" x-model="editingProduct.location_shelf" class="admin-input" placeholder="mis. Rak A1" />
+            </div>
           </div>
-          <div>
-            <label class="admin-label">Stok (informatif, opsional)</label>
-            <input type="number" x-model="editingProduct.stock" class="admin-input" placeholder="mis. 50" />
-          </div>
-        </div>
-
-        <div>
-          <label class="admin-label">Catatan</label>
-          <textarea x-model="editingProduct.notes" rows="2" class="admin-input" placeholder="Opsional"></textarea>
-        </div>
-
-        <label class="flex items-center gap-2 text-[13px]">
-          <input type="checkbox" x-model="editingProduct.is_active" class="w-4 h-4" />
-          Produk aktif (tampil di aplikasi kasir)
-        </label>
-
-        <!-- Dynamic price rows -->
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
-            <label class="admin-label !mb-0">Satuan & Harga *</label>
-            <button type="button" @click="addPriceRow()" class="text-[12px] font-medium text-[var(--primary-dark)]">+ Tambah Satuan</button>
+        </section>
+        <section class="border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="form-section-title !mb-0 !border-b-0 !pb-0">Harga & Satuan</h3>
+            <button type="button" @click="addPriceRow()" class="text-[12px] font-semibold text-[var(--primary-dark)] hover:underline">
+              + Tambah Satuan
+            </button>
           </div>
           <div class="space-y-2">
             <template x-for="(row, idx) in editingProduct.prices" :key="row._key">
-              <div class="grid gap-2 items-center" style="grid-template-columns: 1.1fr 1fr 1fr auto;">
-                <input type="text" x-model="row.unit" placeholder="Satuan (pcs/dus/kg)" class="admin-input" />
+              <div class="price-row-grid grid gap-2 items-center" style="grid-template-columns: 1.1fr 1fr 1fr auto;">
+                <input type="text" x-model="row.unit" placeholder="Satuan" class="admin-input" />
                 <input type="number" min="0" x-model="row.price_public" placeholder="Harga umum" class="admin-input" />
                 <input type="number" min="0" x-model="row.price_member" placeholder="Harga anggota" class="admin-input" />
                 <button type="button" @click="removePriceRow(idx)"
@@ -348,15 +459,33 @@
               </div>
             </template>
           </div>
-          <p class="text-[11.5px] text-[var(--ink-muted)] mt-1.5">Kosongkan "Harga anggota" untuk menyamakannya otomatis dengan harga umum.</p>
-        </div>
+          <p class="text-[11.5px] text-[var(--ink-muted)]">Kosongkan "Harga anggota" untuk menyamakannya otomatis dengan harga umum.</p>
+        </section>
+
+        <section class="border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+          <h3 class="form-section-title">Persediaan & Status</h3>
+          <div>
+            <label class="admin-label">Stok (informatif, opsional)</label>
+            <input type="number" x-model="editingProduct.stock" class="admin-input" placeholder="mis. 50" />
+          </div>
+
+          <div>
+            <label class="admin-label">Catatan</label>
+            <textarea x-model="editingProduct.notes" rows="2" class="admin-input" placeholder="Opsional"></textarea>
+          </div>
+
+          <label class="flex items-center gap-2 text-[13px] pt-1">
+            <input type="checkbox" x-model="editingProduct.is_active" class="w-4 h-4 rounded text-[var(--primary)]" />
+            <span>Produk aktif (tampil di aplikasi kasir)</span>
+          </label>
+        </section>
 
         <p x-show="formError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="formError"></p>
 
-        <div class="flex items-center gap-2.5 pt-1">
-          <button type="button" @click="closeProductModal()" class="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[13.5px] font-medium">Batal</button>
-          <button type="submit" :disabled="savingProduct" class="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13.5px] font-semibold disabled:opacity-60">
-            <span x-show="!savingProduct">Simpan</span>
+        <div class="flex items-center gap-2.5 pt-2">
+          <button type="button" @click="closeProductModal()" class="btn-ghost flex-1">Batal</button>
+          <button type="submit" :disabled="savingProduct" class="btn-primary flex-1">
+            <span x-show="!savingProduct">Simpan Produk</span>
             <span x-show="savingProduct" x-cloak>Menyimpan…</span>
           </button>
         </div>
@@ -367,7 +496,7 @@
   <!-- =========================================================
        MODAL: REVIEW IMPORT CSV
   ========================================================== -->
-  <div x-show="csvModalOpen" x-cloak class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4">
+  <div x-show="csvModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
     <div class="bg-[var(--surface)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
         <h2 class="text-[15.5px] font-semibold">Review Import CSV</h2>
@@ -378,17 +507,17 @@
 
       <div class="px-5 py-4 space-y-4">
         <div class="grid grid-cols-3 gap-2.5 text-center">
-          <div class="rounded-xl bg-[var(--primary-tint)] py-2.5">
+          <div class="rounded-xl bg-[#E0F2FE] border border-[#0284C7]/20 py-2.5">
             <p class="text-[18px] font-bold text-[var(--primary-dark)]" x-text="csvNewProducts.length"></p>
-            <p class="text-[11px] text-[var(--primary-dark)]">Produk baru</p>
+            <p class="text-[11px] text-[var(--primary-dark)] font-medium">Produk baru</p>
           </div>
-          <div class="rounded-xl bg-[var(--accent-tint)] py-2.5">
-            <p class="text-[18px] font-bold text-[var(--accent)]" x-text="csvConflicts.length"></p>
-            <p class="text-[11px] text-[var(--accent)]">Barcode duplikat</p>
+          <div class="rounded-xl bg-amber-50 border border-amber-200 py-2.5">
+            <p class="text-[18px] font-bold text-amber-700" x-text="csvConflicts.length"></p>
+            <p class="text-[11px] text-amber-700 font-medium">Barcode duplikat</p>
           </div>
-          <div class="rounded-xl bg-[var(--danger-tint)] py-2.5">
-            <p class="text-[18px] font-bold text-[var(--danger)]" x-text="csvErrors.length"></p>
-            <p class="text-[11px] text-[var(--danger)]">Baris error</p>
+          <div class="rounded-xl bg-rose-50 border border-rose-200 py-2.5">
+            <p class="text-[18px] font-bold text-rose-700" x-text="csvErrors.length"></p>
+            <p class="text-[11px] text-rose-700 font-medium">Baris error</p>
           </div>
         </div>
 
@@ -445,10 +574,10 @@
         </p>
 
         <div class="flex items-center gap-2.5 pt-1">
-          <button type="button" @click="csvModalOpen = false" class="flex-1 py-2.5 rounded-xl border border-[var(--border)] text-[13.5px] font-medium">Batal</button>
+          <button type="button" @click="csvModalOpen = false" class="btn-ghost flex-1">Batal</button>
           <button type="button" @click="runCsvImport()"
                   :disabled="csvImporting || (!csvNewProducts.length && !csvConflicts.length)"
-                  class="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-white text-[13.5px] font-semibold disabled:opacity-60">
+                  class="btn-primary flex-1">
             <span x-show="!csvImporting">Import Sekarang</span>
             <span x-show="csvImporting" x-cloak>Mengimpor…</span>
           </button>
@@ -460,108 +589,149 @@
   <!-- =========================================================
        MODAL: DATABASE MASTER PRODUK
   ========================================================== -->
-  <div x-show="masterModalOpen" x-cloak class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-      <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
-        <h2 class="text-[15.5px] font-semibold">Database Master Produk</h2>
-        <button @click="masterModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
+  <div x-show="masterModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
+    <div class="relative bg-[var(--surface)] rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div class="px-5 pt-4 pb-3 border-b border-[var(--border)] flex items-start justify-between gap-3 shrink-0 bg-slate-900 text-white">
+        <div class="space-y-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <h2 class="text-[16px] font-bold leading-tight tracking-tight text-white">Database Master Produk</h2>
+            <span class="text-[10.5px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300 border border-slate-700 shrink-0">Referensi</span>
+          </div>
+          <p class="text-[12.5px] text-slate-300 leading-snug">Referensi nama + barcode. Pilih “Gunakan” untuk mengisi form produk katalog.</p>
+        </div>
+        <button @click="masterModalOpen = false" aria-label="Tutup database master" class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <div x-show="masterImporting" x-cloak x-transition.opacity class="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="w-full max-w-md rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-2xl p-5 space-y-4">
+      <div x-show="masterImporting" x-cloak x-transition.opacity class="absolute inset-0 z-50 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-[var(--surface)] border-2 border-[var(--primary)] shadow-2xl p-5 space-y-4">
           <div class="space-y-1">
-            <h3 class="text-[16px] font-semibold">Mengimpor Master Produk...</h3>
+            <h3 class="text-[17px] font-bold text-[var(--primary-dark)]">Mengimpor Master Produk...</h3>
             <p class="text-[13px] text-[var(--ink-muted)]">
-              Batch <span x-text="masterImportStats.currentBatch"></span> dari <span x-text="masterImportStats.totalBatches"></span>
-              (<span x-text="masterImportProgress"></span>%)
+              Batch <span class="font-semibold text-[var(--ink)]" x-text="masterImportStats.currentBatch"></span> dari <span class="font-semibold text-[var(--ink)]" x-text="masterImportStats.totalBatches"></span>
+              (<span class="font-semibold text-[var(--primary)]" x-text="masterImportProgress"></span>%)
             </p>
           </div>
 
           <div class="h-3 rounded-full bg-[var(--surface-sunken)] overflow-hidden border border-[var(--border)]">
-            <div class="h-full rounded-full bg-[var(--primary)] transition-all duration-300 ease-out" :style="'width: ' + masterImportProgress + '%'"></div>
+            <div class="h-full rounded-full bg-gradient-to-r from-[#075985] to-[#14B8A6] transition-all duration-300 ease-out shadow-lg" :style="'width: ' + masterImportProgress + '%'"></div>
           </div>
 
           <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-xl bg-[var(--surface-sunken)] p-3">
-              <div class="text-[11.5px] text-[var(--ink-muted)]">Total Data</div>
-              <div class="text-[15px] font-semibold" x-text="masterImportStats.total"></div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-[11.5px] text-[var(--ink-muted)] font-medium">Total Data</div>
+              <div class="text-[15px] font-bold text-[var(--ink)]" x-text="masterImportStats.total"></div>
             </div>
-            <div class="rounded-xl bg-[var(--surface-sunken)] p-3">
-              <div class="text-[11.5px] text-[var(--ink-muted)]">Berhasil</div>
-              <div class="text-[15px] font-semibold text-emerald-600" x-text="masterImportStats.success"></div>
+            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+              <div class="text-[11.5px] text-emerald-700 font-medium">Berhasil</div>
+              <div class="text-[15px] font-bold text-emerald-700" x-text="masterImportStats.success"></div>
             </div>
-            <div class="rounded-xl bg-[var(--surface-sunken)] p-3">
-              <div class="text-[11.5px] text-[var(--ink-muted)]">Diproses</div>
-              <div class="text-[15px] font-semibold" x-text="masterImportStats.processed"></div>
+            <div class="rounded-xl bg-blue-50 border border-blue-200 p-3">
+              <div class="text-[11.5px] text-[var(--primary-dark)] font-medium">Diproses</div>
+              <div class="text-[15px] font-bold text-[var(--primary-dark)]" x-text="masterImportStats.processed"></div>
             </div>
           </div>
 
-          <p class="text-[12px] text-amber-600 font-medium text-center">Mohon jangan tutup atau refresh halaman ini.</p>
+          <p class="text-[12px] text-amber-700 font-medium text-center bg-amber-50 border border-amber-200 rounded-lg py-2">Mohon jangan tutup atau refresh halaman ini.</p>
         </div>
       </div>
 
-      <div class="px-5 py-4 flex-1 space-y-4">
-        <!-- Search & Actions -->
-        <div class="flex items-center gap-2.5">
-          <div class="flex-1">
-            <input type="text" 
-                   x-model="masterSearch" 
+      <div class="flex-1 min-h-0 flex flex-col px-5 py-4 gap-4 overflow-hidden">
+        <!-- Primary: Search -->
+        <div class="space-y-2.5 shrink-0">
+          <label for="masterSearchInput" class="admin-label !mb-0">Cari referensi</label>
+          <div class="relative">
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)]">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m19 19-3.2-3.2"/></svg>
+            </span>
+            <input id="masterSearchInput" type="text"
+                   x-model="masterSearch"
                    @input.debounce.300ms="searchMaster()"
-                   placeholder="Cari nama atau barcode dari database master…"
-                   class="admin-input w-full" />
+                   placeholder="Cari nama produk atau scan barcode..."
+                   class="admin-input pl-9 w-full text-[13.5px] py-2.5" />
           </div>
-          <button @click="$refs.masterCsvInput.click()" class="px-3.5 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[13px] font-medium whitespace-nowrap">
-            Import CSV Master
-          </button>
-          <input type="file" x-ref="masterCsvInput" accept=".csv" class="hidden" @change="handleMasterCsv($event)" />
+          <p class="text-[11.5px] text-[var(--ink-muted)] leading-snug">Ketik minimal 1 karakter atau scan barcode. Hasil dibatasi 30 data (server-side).</p>
         </div>
 
-        <!-- Results Table -->
-        <div class="border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface)]">
-          <div class="overflow-x-auto max-h-[50vh] overflow-y-auto">
-            <table class="w-full text-[13px]">
-              <thead class="sticky top-0 bg-[var(--surface-sunken)]">
-                <tr class="text-left text-[11.5px] uppercase tracking-wide text-[var(--ink-muted)]">
-                  <th class="px-4 py-2.5 font-medium">Nama Master</th>
-                  <th class="px-4 py-2.5 font-medium">Barcode</th>
-                  <th class="px-4 py-2.5 font-medium w-28">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template x-if="masterSearching">
-                  <tr><td colspan="3" class="px-4 py-8 text-center text-[var(--ink-muted)]">Mencari…</td></tr>
-                </template>
+        <!-- Results: reference hierarchy -->
+        <div class="flex-1 min-h-0 flex flex-col border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface)]">
+          <div class="hidden sm:flex items-center text-[10.5px] uppercase tracking-wide font-semibold text-[var(--ink-muted)] bg-[var(--surface-sunken)] border-b border-[var(--border)] px-4 py-2 shrink-0">
+            <div class="flex-1">Nama Master</div>
+            <div class="flex-[0_0_170px] ml-4">Barcode</div>
+            <div class="flex-[0_0_110px] text-right">Aksi</div>
+          </div>
 
-                <template x-if="!masterSearching && masterResults.length === 0">
-                  <tr><td colspan="3" class="px-4 py-8 text-center text-[var(--ink-muted)]">Tidak ada hasil. Coba kata kunci lain.</td></tr>
-                </template>
+          <div class="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+            <template x-if="masterSearching">
+              <div class="px-4 py-7 space-y-3">
+                <div class="h-3.5 rounded-full bg-[var(--surface-sunken)] w-2/3 animate-pulse"></div>
+                <div class="h-3 rounded-full bg-[var(--surface-sunken)] w-1/2 animate-pulse"></div>
+                <p class="text-[12.5px] text-[var(--ink-muted)] text-center pt-1">Mencari di master_products…</p>
+              </div>
+            </template>
 
-                <template x-for="mp in masterResults" :key="mp.id">
-                  <tr class="border-t border-[var(--border)]">
-                    <td class="px-4 py-2.5 font-medium">
-                      <span x-text="mp.name"></span><span x-show="mp.inCatalog" class="ml-2 text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary-dark)]">✓ Di Katalog</span>
-                    </td>
-                    <td class="px-4 py-2.5 font-mono text-[12px]" x-text="mp.barcode || '-'"></td>
-                    <td class="px-4 py-2.5">
-                      <template x-if="mp.inCatalog">
-                        <button disabled class="px-3 py-1.5 rounded-lg bg-[var(--surface-sunken)] text-[var(--ink-muted)] text-[12px] font-medium cursor-not-allowed">Sudah Ada</button>
-                      </template>
-                      <template x-if="!mp.inCatalog">
-                        <button @click="useMasterProduct(mp)" class="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-white text-[12.5px] font-semibold hover:bg-[var(--primary-dark)]">Gunakan</button>
-                      </template>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
+            <template x-if="!masterSearching && !masterSearch.trim()">
+              <div class="px-5 py-10 text-center">
+                <div class="w-11 h-11 rounded-2xl bg-[var(--surface-sunken)] mx-auto flex items-center justify-center text-[var(--ink-faint)]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+                </div>
+                <p class="mt-3 text-[13.5px] font-semibold">Mulai cari referensi</p>
+                <p class="text-[12.5px] text-[var(--ink-muted)] leading-relaxed mt-1 max-w-[28rem] mx-auto">Ketik nama produk atau scan barcode. Sistem hanya memuat hasil yang cocok — seluruh 28.000+ data tidak dimuat ke browser.</p>
+              </div>
+            </template>
+
+            <template x-if="!masterSearching && masterSearch.trim() && masterResults.length === 0">
+              <div class="px-5 py-10 text-center">
+                <div class="w-11 h-11 rounded-2xl bg-[var(--danger-tint)] mx-auto flex items-center justify-center text-[var(--danger)]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></svg>
+                </div>
+                <p class="mt-3 text-[13.5px] font-semibold">Tidak ada hasil</p>
+                <p class="text-[12.5px] text-[var(--ink-muted)] leading-relaxed mt-1 max-w-[28rem] mx-auto">Tidak menemukan referensi untuk “<span class="font-medium text-[var(--ink)] break-words" x-text="masterSearch"></span>”. Perbaiki kata kunci atau cek barcode (leading zero tetap sebagai string).</p>
+              </div>
+            </template>
+
+            <!-- Desktop rows + Mobile cards from same data -->
+            <div class="divide-y divide-[var(--border)]">
+              <template x-for="mp in masterResults" :key="mp.id">
+                <div class="px-4 py-3.5 flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 bg-white hover:bg-[var(--surface-sunken)]/40 transition-colors">
+                  <div class="min-w-0 flex-1 space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="text-[13.5px] font-semibold leading-tight text-[var(--ink)] break-words" x-text="mp.name"></p>
+                      <span x-show="mp.inCatalog" class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[var(--primary-tint)] text-[var(--primary-dark)] border border-[var(--primary-dark)]/10">Di Katalog</span>
+                    </div>
+                    <p class="flex items-center gap-2 min-w-0">
+                      <span class="text-[11px] font-semibold uppercase tracking-wide text-[var(--ink-muted)] shrink-0">Barcode</span>
+                      <span class="text-[12px] font-mono text-[var(--ink)] bg-[var(--surface-sunken)] px-2 py-0.5 rounded-lg border border-[var(--border)] break-all" x-text="mp.barcode || '—'"></span>
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2 sm:ml-auto shrink-0">
+                    <span x-show="mp.inCatalog" class="text-[11.5px] font-medium text-[var(--ink-muted)]">Sudah ada di katalog — tidak dapat digunakan.</span>
+                    <template x-if="mp.inCatalog">
+                      <button disabled class="btn-ghost opacity-60 cursor-not-allowed shrink-0 !font-medium">Sudah Ada</button>
+                    </template>
+                    <template x-if="!mp.inCatalog">
+                      <button @click="useMasterProduct(mp)" class="btn-primary btn-sm shadow-sm">Gunakan</button>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
         </div>
 
-        <p class="text-[12px] text-[var(--ink-muted)] text-center">
-          Cari produk dari database master (28.770 data) lalu gunakan untuk mengisi form tambah produk secara otomatis.
-        </p>
+        <!-- Separated: Import Master CSV -->
+        <section class="shrink-0 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-sunken)]/60 p-3.5 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2.5">
+            <div class="space-y-1 min-w-0">
+              <p class="text-[12.5px] font-semibold">Import Master CSV</p>
+              <p class="text-[11.5px] text-[var(--ink-muted)] leading-snug">Batch 1.000 baris • konflik by barcode (string, leading zero aman) • progress otomatis.</p>
+            </div>
+            <button @click="$refs.masterCsvInput.click()" class="btn-secondary shrink-0">Import CSV Master</button>
+            <input type="file" x-ref="masterCsvInput" accept=".csv" class="hidden" @change="handleMasterCsv($event)" />
+          </div>
+          <p class="text-[11px] text-[var(--ink-muted)]">Template master: header <span class="font-mono font-medium text-[var(--ink)]">name, barcode</span>. Barcode diproses sebagai string.</p>
+        </section>
       </div>
     </div>
   </div>
@@ -570,7 +740,7 @@
        TOAST
   ========================================================== -->
   <div x-show="toast" x-cloak x-transition
-       class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[var(--ink)] text-white text-[13px] px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center">
+       class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[60] bg-[var(--ink)] text-white text-[13px] px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center">
     <span x-text="toast"></span>
   </div>
 
@@ -652,6 +822,9 @@
 
     function adminApp() {
       return {
+        // ---- navigation state ----
+        mobileMenuOpen: false,
+
         // ---- auth state ----
         session: null,
         loginEmail: "",
@@ -693,6 +866,13 @@
         masterImporting: false,
         masterImportProgress: 0,
         masterImportStats: { total: 0, processed: 0, success: 0, skipped: 0, failed: 0, currentBatch: 0, totalBatches: 0 },
+
+        // ---- dashboard stats ----
+        statsLoading: true,
+        activeProductCount: 0,
+        inactiveProductCount: 0,
+        masterProductCount: 0,
+        categoryCount: 0,
 
         // ---- toast ----
         toast: "",
@@ -736,6 +916,7 @@
         // ---- data loading ----
         async loadData() {
           this.loading = true;
+          this.statsLoading = true;
           const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await Promise.all([
             supabaseClient
               .from("products")
@@ -754,6 +935,42 @@
 
           this.applyFilters();
           this.loading = false;
+
+          // Fetch dashboard stats with efficient server-side count queries.
+          this.loadDashboardStats();
+        },
+
+        async countRows(table, filter = null) {
+          let query = supabaseClient.from(table).select("*", { count: "exact", head: true });
+          if (filter) query = query.eq(filter.column, filter.value);
+          const { count, error } = await query;
+          if (error) throw error;
+          return count || 0;
+        },
+
+        async loadDashboardStats() {
+          this.statsLoading = true;
+          const stats = await Promise.allSettled([
+            this.countRows("products", { column: "is_active", value: true }),
+            this.countRows("products", { column: "is_active", value: false }),
+            this.countRows("master_products"),
+            this.countRows("categories"),
+          ]);
+
+          const [activeResult, inactiveResult, masterResult, categoryResult] = stats;
+          if (activeResult.status === "fulfilled") this.activeProductCount = activeResult.value;
+          else console.error("Failed to load active product count:", activeResult.reason);
+
+          if (inactiveResult.status === "fulfilled") this.inactiveProductCount = inactiveResult.value;
+          else console.error("Failed to load inactive product count:", inactiveResult.reason);
+
+          if (masterResult.status === "fulfilled") this.masterProductCount = masterResult.value;
+          else console.error("Failed to load master product count:", masterResult.reason);
+
+          if (categoryResult.status === "fulfilled") this.categoryCount = categoryResult.value;
+          else console.error("Failed to load category count:", categoryResult.reason);
+
+          this.statsLoading = false;
         },
 
         // Nama kategori untuk ditampilkan — utamakan hasil embed dari loadData(),
