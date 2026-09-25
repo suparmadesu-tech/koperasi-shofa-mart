@@ -84,25 +84,23 @@
   @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .dot-online { animation: pulse-dot 2.4s ease-in-out infinite; }
 
-  /* Signature Card v5: Premium depth & separation */
+  /* Signature Card v5.1: Refined depth */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
     box-shadow:
-      0 1px 2px rgba(15, 23, 42, 0.05),
-      0 2px 6px rgba(15, 23, 42, 0.04),
-      0 4px 12px rgba(15, 23, 42, 0.03);
+      0 1px 3px rgba(15, 23, 42, 0.06),
+      0 4px 12px rgba(15, 23, 42, 0.04);
     transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
                 box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
                 border-color 220ms ease-out;
   }
   .card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: #BAE6FD;
     box-shadow:
-      0 2px 4px rgba(7, 89, 133, 0.04),
-      0 6px 16px -2px rgba(7, 89, 133, 0.1),
-      0 12px 32px -4px rgba(7, 89, 133, 0.08);
+      0 4px 8px rgba(7, 89, 133, 0.08),
+      0 12px 24px -4px rgba(7, 89, 133, 0.12);
   }
   .card:active {
     transform: translateY(-1px) scale(0.995);
@@ -124,23 +122,6 @@
     border-radius: inherit;
     border: 1px solid rgba(7, 89, 133, 0.08);
     pointer-events: none;
-  }
-
-  /* Price anchor: subtle signature baseline */
-  .price-anchor {
-    position: relative;
-    display: inline-block;
-  }
-  .price-anchor::after {
-    content: "";
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--primary-light) 0%, transparent 100%);
-    opacity: 0.15;
-    border-radius: 1px;
   }
 
   /* Button active */
@@ -217,7 +198,7 @@
         </div>
         <div class="leading-tight min-w-0">
           <p class="font-bold text-[15px] text-[var(--ink)] truncate">Shofa Mart</p>
-          <p class="text-[10.5px] text-[var(--ink-muted)] truncate" x-text="lastSyncedLabel"></p>
+          <p class="text-[10.5px] truncate" :class="isDataStale ? 'text-[var(--warning)]' : 'text-[var(--ink-muted)]'" x-text="lastSyncedLabel"></p>
         </div>
       </div>
 
@@ -397,6 +378,7 @@
             <div class="relative aspect-[4/3] photo-area overflow-hidden cursor-pointer"
                  @click="openZoom(p)" role="button" tabindex="0" @keydown.enter="openZoom(p)" :aria-label="'Perbesar foto ' + p.name">
               <img x-show="p.image_url && !p._imgError" :src="p.image_url" loading="lazy" @error="p._imgError = true"
+                   :alt="'Foto produk ' + p.name"
                    class="w-full h-full object-contain p-2.5 sm:p-3 lg:p-3.5 transition-transform duration-250 group-hover:scale-[1.02]" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
                 <div class="w-14 h-14 rounded-xl bg-white/80 flex items-center justify-center shadow-sm">
@@ -424,6 +406,7 @@
           <article class="group flex gap-3 p-3 rounded-2xl card">
             <div class="relative w-20 h-20 rounded-xl overflow-hidden photo-area shrink-0 cursor-pointer" @click="openZoom(p)" role="button" tabindex="0" @keydown.enter="openZoom(p)" :aria-label="'Perbesar foto ' + p.name">
               <img x-show="p.image_url && !p._imgError" :src="p.image_url" loading="lazy" @error="p._imgError = true"
+                   :alt="'Foto produk ' + p.name"
                    class="w-full h-full object-contain p-2 transition-transform duration-250" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
                 <div class="w-10 h-10 rounded-lg bg-white/80 flex items-center justify-center shadow-sm">
@@ -456,6 +439,7 @@
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
     </button>
     <img x-show="zoomedProduct" :src="zoomedProduct?.image_url" @click.stop
+         :alt="'Foto produk ' + (zoomedProduct?.name || '')"
          class="max-w-full max-h-[70vh] rounded-2xl object-contain shadow-2xl" />
     <p class="text-white font-semibold text-[16px] mt-4 text-center px-6" x-text="zoomedProduct?.name"></p>
     <p class="text-white/70 text-[13px] mt-1" x-text="zoomedProduct?.category"></p>
@@ -479,9 +463,11 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
       </button>
 
-      <div class="relative aspect-square sm:aspect-auto sm:w-2/5 sm:shrink-0 bg-gradient-to-br from-[var(--surface-sunken)] to-[#E0F2FE]/40 sm:rounded-l-3xl overflow-hidden cursor-pointer group"
+      <div class="relative aspect-[4/3] sm:aspect-auto sm:w-2/5 sm:shrink-0 bg-gradient-to-br from-[var(--surface-sunken)] to-[#E0F2FE]/40 sm:rounded-l-3xl overflow-hidden cursor-pointer group"
            @click="openZoom(selectedProduct)" role="button" tabindex="0" @keydown.enter="openZoom(selectedProduct)" aria-label="Perbesar foto produk">
-        <img x-show="selectedProduct?.image_url && !selectedProduct?._imgError" :src="selectedProduct?.image_url" class="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
+        <img x-show="selectedProduct?.image_url && !selectedProduct?._imgError" :src="selectedProduct?.image_url" 
+             :alt="'Foto produk ' + (selectedProduct?.name || '')"
+             class="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
         <div x-show="!selectedProduct?.image_url || selectedProduct?._imgError" class="absolute inset-0 flex items-center justify-center">
           <div class="w-20 h-20 rounded-2xl bg-white/70 backdrop-blur-sm flex items-center justify-center shadow-sm">
             <span x-html="getIcon(categoryIcon(selectedProduct?.category), false, 40)"></span>
@@ -600,6 +586,18 @@
 
     const CACHE_KEY = "koperasi_katalog_cache_v1";
     const VIEW_MODE_KEY = "koperasi_view_mode";
+    const DATA_TIMEOUT_MS = 8000;
+    const STALE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
+
+    // Helper: wrap promise dengan timeout
+    function withTimeout(promise, timeoutMs) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+        )
+      ]);
+    }
 
     // Ikon inline (statis) — dicocokkan dengan field `icon` di tabel categories
     const ICONS = {
@@ -668,6 +666,14 @@
             if (closed === "browsing" && now === "home") this.resetViewState();
           });
 
+          // Update stale status secara periodik tanpa reload
+          if (!this._staleInterval) {
+            this._staleInterval = setInterval(() => {
+              // Force Alpine reactivity update
+              this._staleCheck = !this._staleCheck;
+            }, 60000); // cek setiap menit
+          }
+
           this.loadData();
         },
 
@@ -683,7 +689,7 @@
         // ---- data loading ----
         async loadData() {
           try {
-            const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await Promise.all([
+            const fetchPromise = Promise.all([
               supabaseClient
                 .from("public_catalog")
                 .select("id,name,alias,barcode,category_id,category_name,category_icon,prices,location_shelf,image_url"),
@@ -693,12 +699,15 @@
                 .order("sort_order", { ascending: true }),
             ]);
 
+            const [{ data: products, error: pErr }, { data: categories, error: cErr }] = await withTimeout(fetchPromise, DATA_TIMEOUT_MS);
+
             if (pErr) throw pErr;
             if (cErr) throw cErr;
 
             this.allProducts = (products || []).map((p) => ({
               ...p,
               category: p.category_name,
+              barcode: p.barcode ? String(p.barcode) : null,
               _imgError: false,
             }));
             this.allCategories = categories || [];
@@ -711,7 +720,9 @@
           } catch (err) {
             console.error("Gagal memuat data dari Supabase:", err);
             const usedCache = this.loadFromCache();
-            if (!usedCache) this.scanNotice = "Gagal memuat data. Periksa konfigurasi Supabase & koneksi internet.";
+            if (!usedCache) {
+              this.scanNotice = "Gagal memuat data. Periksa konfigurasi Supabase & koneksi internet.";
+            }
             this.loading = false;
           }
         },
@@ -741,7 +752,11 @@
 
         buildFuseIndex() {
           this.fuse = new Fuse(this.allProducts, {
-            keys: [{ name: "name", weight: 0.7 }, { name: "alias", weight: 0.3 }],
+            keys: [
+              { name: "name", weight: 0.65 },
+              { name: "alias", weight: 0.25 },
+              { name: "barcode", weight: 0.10 }
+            ],
             threshold: 0.35, ignoreLocation: true, minMatchCharLength: 2,
           });
         },
@@ -753,7 +768,7 @@
             this.selectedCategory = null;
             this.results = this.fuse ? this.fuse.search(this.query.trim()).map((r) => r.item).slice(0, 30) : [];
           } else if (this.selectedCategory && this.selectedCategory.id !== 0) {
-            this.results = this.allProducts.filter((p) => p.category === this.selectedCategory.name);
+            this.results = this.allProducts.filter((p) => p.category_id === this.selectedCategory.id);
           } else {
             this.results = this.allProducts;
           }
@@ -954,10 +969,18 @@
           if (this.selectedCategory) return `${this.results.length} barang di "${this.selectedCategory.name}"`;
           return `${this.results.length} hasil untuk "${this.query}"`;
         },
+        get isDataStale() {
+          this._staleCheck; // Force dependency tracking untuk reactivity update
+          if (!this.lastSynced) return false;
+          const now = new Date();
+          const diff = now - this.lastSynced;
+          return diff >= STALE_THRESHOLD_MS;
+        },
         get lastSyncedLabel() {
           if (!this.lastSynced) return "Belum tersinkron";
           const time = this.lastSynced.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-          return `Data terakhir: ${time}`;
+          const stale = this.isDataStale ? " · mungkin usang" : "";
+          return `Data terakhir: ${time}${stale}`;
         },
       };
     }
