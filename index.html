@@ -753,9 +753,8 @@
         buildFuseIndex() {
           this.fuse = new Fuse(this.allProducts, {
             keys: [
-              { name: "name", weight: 0.65 },
-              { name: "alias", weight: 0.25 },
-              { name: "barcode", weight: 0.10 }
+              { name: "name", weight: 0.70 },
+              { name: "alias", weight: 0.30 }
             ],
             threshold: 0.35, ignoreLocation: true, minMatchCharLength: 2,
           });
@@ -764,9 +763,19 @@
         // ---- search & filter ----
         runSearch() {
           this.isScanResult = false;
-          if (this.query.trim().length > 0) {
+          const q = this.query.trim();
+          if (q.length > 0) {
             this.selectedCategory = null;
-            this.results = this.fuse ? this.fuse.search(this.query.trim()).map((r) => r.item).slice(0, 30) : [];
+            // Barcode prefix match (strict, no fuzzy)
+            const barcodeResults = q.match(/^\d+$/)
+              ? this.allProducts.filter((p) => p.barcode && String(p.barcode).startsWith(q))
+              : [];
+            // Fuse search for name/alias only
+            const fuseResults = this.fuse ? this.fuse.search(q).map((r) => r.item) : [];
+            // Merge results: barcode prefix match first, then unique fuse results
+            const barcodeSet = new Set(barcodeResults.map((p) => p.id));
+            const merged = [...barcodeResults, ...fuseResults.filter((p) => !barcodeSet.has(p.id))];
+            this.results = merged.slice(0, 30);
           } else if (this.selectedCategory && this.selectedCategory.id !== 0) {
             this.results = this.allProducts.filter((p) => p.category_id === this.selectedCategory.id);
           } else {
@@ -981,6 +990,13 @@
           const time = this.lastSynced.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
           const stale = this.isDataStale ? " · mungkin usang" : "";
           return `Data terakhir: ${time}${stale}`;
+        },
+
+        destroy() {
+          if (this._staleInterval) {
+            clearInterval(this._staleInterval);
+            this._staleInterval = null;
+          }
         },
       };
     }
