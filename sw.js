@@ -18,7 +18,7 @@
 // service worker lama otomatis dibersihkan dan versi baru dipakai.
 // =====================================================================
 
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v6";
 const SHELL_CACHE = `koperasi-shell-${CACHE_VERSION}`;
 const DATA_CACHE = `koperasi-data-${CACHE_VERSION}`;
 const LIB_CACHE = `koperasi-libs-${CACHE_VERSION}`;
@@ -30,6 +30,7 @@ const SHELL_FILES = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./styles.css",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-512-maskable.png",

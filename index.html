@@ -13,8 +13,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Shofa Mart" />
 
-<!-- Tailwind CSS (CDN) -->
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind CSS (CDN) → Production build -->
+<link rel="stylesheet" href="./styles.css" />
 
 <!-- Alpine.js (CDN) -->
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -382,7 +382,7 @@
                    class="w-full h-full object-contain p-2.5 sm:p-3 lg:p-3.5 transition-transform duration-250 group-hover:scale-[1.02]" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
                 <div class="w-14 h-14 rounded-xl bg-white/80 flex items-center justify-center shadow-sm">
-                  <span x-html="getIcon(categoryIcon(p.category), false, 28)" class="text-[var(--primary)]"></span>
+                  <span x-html="getIcon(p.category_icon, false, 28)" class="text-[var(--primary)]"></span>
                 </div>
               </div>
             </div>
@@ -410,7 +410,7 @@
                    class="w-full h-full object-contain p-2 transition-transform duration-250" />
               <div x-show="!p.image_url || p._imgError" class="absolute inset-0 flex items-center justify-center">
                 <div class="w-10 h-10 rounded-lg bg-white/80 flex items-center justify-center shadow-sm">
-                  <span x-html="getIcon(categoryIcon(p.category), false, 24)" class="text-[var(--primary)]"></span>
+                  <span x-html="getIcon(p.category_icon, false, 24)" class="text-[var(--primary)]"></span>
                 </div>
               </div>
             </div>
@@ -470,7 +470,7 @@
              class="w-full h-full object-contain p-4 transition-transform duration-300 group-hover:scale-105" />
         <div x-show="!selectedProduct?.image_url || selectedProduct?._imgError" class="absolute inset-0 flex items-center justify-center">
           <div class="w-20 h-20 rounded-2xl bg-white/70 backdrop-blur-sm flex items-center justify-center shadow-sm">
-            <span x-html="getIcon(categoryIcon(selectedProduct?.category), false, 40)"></span>
+            <span x-html="getIcon(selectedProduct?.category_icon, false, 40)"></span>
           </div>
         </div>
         <div x-show="selectedProduct?.image_url && !selectedProduct?._imgError" class="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-lg bg-white/95 backdrop-blur-sm flex items-center gap-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
@@ -959,11 +959,6 @@
           const stroke = isActive ? "white" : "var(--ink-faint)";
           const s = size || 22;
           return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
-        },
-
-        categoryIcon(categoryName) {
-          const cat = this.allCategories.find((c) => c.name === categoryName);
-          return cat ? cat.icon : null;
         },
 
         formatRupiah(value) {

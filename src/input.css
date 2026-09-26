@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS variables — sync dengan :root di HTML files */
+:root {
+  /* Backgrounds & Surface */
+  --bg:            #F4F8FA;
+  --surface:       #FFFFFF;
+  --surface-sunken:#EEF4F7;
+  --surface-raised:#FFFFFF;
+
+  /* Typography & Ink */
+  --ink:           #0F172A;
+  --ink-muted:     #64748B;
+  --ink-faint:     #94A3B8;
+
+  /* Borders & Dividers */
+  --border:        #E2E8F0;
+  --border-strong: #CBD5E1;
+
+  /* Brand Primary: SHОFA MART OCEAN */
+  --primary:       #075985;
+  --primary-dark:  #0C4A6E;
+  --primary-light: #0284C7;
+  --primary-tint:  #E0F2FE;
+
+  /* Accent: restrained warm gold */
+  --accent:        #F59E0B;
+  --accent-dark:   #B45309;
+  --accent-tint:   #FEF3C7;
+
+  /* Semantic States */
+  --online:        #1E9E5A;
+  --offline:       #B45309;
+  --success:       #1E9E5A;
+  --success-tint:  #E6F7EE;
+  --warning:       #D97706;
+  --warning-tint:  #FEF3E2;
+  --danger:        #B42318;
+  --danger-tint:   #FBEAE8;
+
+  /* Elevational Shadows (admin) */
+  --shadow-card:   0 1px 2px rgba(15,23,42,0.04), 0 4px 14px rgba(15,23,42,0.05);
+  --shadow-sm:     0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:     0 2px 4px rgba(15,23,42,0.06), 0 4px 12px rgba(15,23,42,0.08);
+  --shadow-lg:     0 4px 8px rgba(15,23,42,0.08), 0 8px 24px rgba(15,23,42,0.12);
+}
+
+/* Custom utility classes — tetap pakai Tailwind classes tambahan */
+/* none — semua styling custom masuk ke CSS file terpisah */
