@@ -648,8 +648,9 @@
             <input id="masterSearchInput" type="text"
                    x-model="masterSearch"
                    @input.debounce.300ms="searchMaster()"
+                   @keydown.enter.prevent="searchMaster()"
                    placeholder="Cari nama produk atau scan barcode..."
-                   class="admin-input pl-9 w-full text-[13.5px] py-2.5" />
+                   class="admin-input !pl-9 w-full text-[13.5px] py-2.5" />
           </div>
           <p class="text-[11.5px] text-[var(--ink-muted)] leading-snug">Ketik minimal 1 karakter atau scan barcode. Hasil dibatasi 30 data (server-side).</p>
         </div>
@@ -1408,7 +1409,7 @@
 
         // ---- master products ----
         async searchMaster() {
-          const term = this.masterSearch.trim();
+          const term = String(this.masterSearch || "").trim();
           if (!term) {
             this.masterResults = [];
             return;
