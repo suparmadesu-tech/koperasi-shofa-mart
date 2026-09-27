@@ -47,6 +47,7 @@ icons/
 migrations/
   005_add_name_normalized_index.sql
   006_upsert_master_no_barcode_function.sql
+  007_consolidated_master_dedup.sql
 src/
   input.css
 admin.html
@@ -61,26 +62,85 @@ tailwind.config.js
 <files>
 This section contains the contents of the repository's files.
 
-<file path="migrations/005_add_name_normalized_index.sql">
--- Migration 005: Add name_normalized generated column and partial unique index for dedup by name (case-insensitive)
--- Purpose: Support dedup of master_products without barcode based on normalized (lowercased, trimmed) name
+<file path="migrations/007_consolidated_master_dedup.sql">
+-- ========================================================================
+-- Migration 007: Consolidated Master Products Deduplication Setup
+-- Purpose: Idempotent setup untuk master_products dengan dedup by barcode
+--          (dengan barcode) dan dedup by name (tanpa barcode).
+-- ========================================================================
+-- Catatan: File ini mengkonsolidasi 005 & 006 dengan pengecekan idempotent.
+-- Aman dijalankan berulang kali tanpa error, bahkan jika sebagian objeknya
+-- sudah ada di database. Setiap langkah dilindungi dengan conditional logic.
+-- ========================================================================
 
--- Step 1: Add generated column name_normalized (automatically maintains lower(trim(name)))
-ALTER TABLE master_products
-ADD COLUMN name_normalized TEXT GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED;
+BEGIN;
 
--- Step 2: Add partial unique index on name_normalized
--- Index only applies to rows where barcode IS NULL (rows without barcode)
--- This ensures no duplicate names (case-insensitive) for barcode-less products
--- Rows WITH barcode keep their existing barcode-based dedup (unchanged)
-CREATE UNIQUE INDEX idx_master_products_name_normalized_partial
-ON master_products(name_normalized)
+-- ========================================================================
+-- STEP 1: Buat tabel master_products jika belum ada (IF NOT EXISTS)
+-- ========================================================================
+-- Alasan idempotent: IF NOT EXISTS mencegah error jika tabel sudah ada.
+-- Skema harus match dengan structure asli: UUID PK, barcode UNIQUE,
+-- timestamps, dan name sebagai required field.
+-- Kolom name_normalized (generated) dan barcode nullable akan ditambah/modify
+-- di langkah berikutnya.
+
+CREATE TABLE IF NOT EXISTS public.master_products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  barcode TEXT UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::TEXT, NOW()),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::TEXT, NOW())
+);
+
+-- ========================================================================
+-- STEP 2: Drop NOT NULL constraint dari kolom barcode
+-- ========================================================================
+-- Alasan: Produk tanpa barcode harus diizinkan di master_products.
+-- Idempotent: ALTER COLUMN ... DROP NOT NULL adalah no-op jika constraint
+--             sudah hilang, tidak error. Tidak perlu exception handler.
+--             Exception handler berbahaya karena menelan semua error lain.
+
+ALTER TABLE master_products ALTER COLUMN barcode DROP NOT NULL;
+
+-- ========================================================================
+-- STEP 3: Tambah kolom name_normalized sebagai generated column
+-- ========================================================================
+-- Alasan: Kolom ini menyimpan lowercase + trim dari name, digunakan sebagai
+--         arbiter di partial unique index untuk dedup case-insensitive.
+-- Idempotent: DO $$ BEGIN ... EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+--             Menangkap error HANYA jika kolom sudah ada (duplicate_column).
+--             Tidak mengubah existing values (generated column otomatis).
+
+DO $$
+BEGIN
+  ALTER TABLE master_products
+  ADD COLUMN name_normalized TEXT GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED;
+EXCEPTION WHEN duplicate_column THEN
+  NULL;  -- Kolom sudah ada, skip
+END $$;
+
+-- ========================================================================
+-- STEP 4: Buat partial unique index pada name_normalized
+-- ========================================================================
+-- Alasan: Memastikan tidak ada duplicate case-insensitive names untuk rows
+--         TANPA barcode. Rows DENGAN barcode tetap pakai barcode-based dedup.
+--         Partial predicate (WHERE barcode IS NULL) memungkinkan multiple rows
+--         dengan barcode yang sama tapi NULL pada barcode-less rows.
+-- Idempotent: IF NOT EXISTS mencegah error jika index sudah ada.
+--             PostgreSQL tidak akan recreate atau error.
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_master_products_name_normalized_partial
+ON public.master_products (name_normalized)
 WHERE barcode IS NULL;
-</file>
 
-<file path="migrations/006_upsert_master_no_barcode_function.sql">
--- Migration 006: Postgres function untuk upsert master_products tanpa barcode dengan partial unique index predicate
--- Purpose: Workaround PostgREST limitation (tidak bisa generate ON CONFLICT ... WHERE predicate via .upsert())
+-- ========================================================================
+-- STEP 5: Buat RPC function untuk upsert no-barcode rows
+-- ========================================================================
+-- Alasan: PostgREST client tidak bisa emit ON CONFLICT ... WHERE predicate
+--         (partial index arbiter) lewat .upsert() API. Function ini adalah
+--         workaround: menghandle dedup tanpa-barcode via direct SQL.
+-- Idempotent: CREATE OR REPLACE FUNCTION otomatis menimpa function lama.
+--             Tanda tangan dan logic bisa berubah tanpa error.
 
 CREATE OR REPLACE FUNCTION public.upsert_master_products_no_barcode(rows jsonb)
 RETURNS TABLE(inserted_count int, skipped_count int) 
@@ -91,10 +151,11 @@ DECLARE
   v_inserted int;
   v_total int;
 BEGIN
-  -- Hitung total baris input
+  -- Hitung total baris input (untuk skipped count = total - inserted)
   v_total := jsonb_array_length(rows);
   
-  -- Insert dengan ON CONFLICT yang include WHERE predicate (partial unique index)
+  -- Insert dengan ON CONFLICT (name_normalized) WHERE barcode IS NULL DO NOTHING
+  -- Menggunakan partial index arbiter untuk dedup case-insensitive names saja.
   WITH input_rows AS (
     SELECT (r->>'name')::text AS name
     FROM jsonb_array_elements(rows) AS r
@@ -109,13 +170,49 @@ BEGIN
   )
   SELECT COUNT(*) INTO v_inserted FROM ins;
   
-  -- Return inserted count dan skipped count
+  -- Return inserted_count dan skipped_count
   RETURN QUERY SELECT v_inserted, (v_total - v_inserted);
 END;
 $$;
 
+-- Dokumentasi function
 COMMENT ON FUNCTION public.upsert_master_products_no_barcode(jsonb) IS 
-'Upsert master_products rows tanpa barcode. Dedup by name_normalized (case-insensitive). Requires partial unique index WHERE barcode IS NULL.';
+'Upsert master_products rows tanpa barcode. Dedup by name_normalized (case-insensitive). Returns (inserted_count, skipped_count). Requires partial unique index WHERE barcode IS NULL.';
+
+COMMIT;
+
+-- ========================================================================
+-- VERIFICATION QUERIES (non-destructive, run setelah migration selesai)
+-- ========================================================================
+-- Jalankan setiap query di bawah untuk memastikan semua setup benar-benar aktif.
+
+-- Verifikasi 1: Barcode nullable?
+-- Expected result: barcode | YES
+-- Artinya: kolom barcode allow NULL, tidak ada NOT NULL constraint
+SELECT column_name, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'master_products' AND column_name = 'barcode';
+
+-- Verifikasi 2: name_normalized ada dan generated?
+-- Expected result: name_normalized | YES | lower(btrim(name))
+-- Artinya: kolom ada, is_generated=YES, expression show LOWER(TRIM(...))
+SELECT column_name, is_generated, generation_expression
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'master_products' AND column_name = 'name_normalized';
+
+-- Verifikasi 3: Index partial ada dan benar?
+-- Expected result: idx_master_products_name_normalized_partial | ...WHERE (barcode IS NULL)
+-- Artinya: index ada, definisi include predicate WHERE barcode IS NULL
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename = 'master_products' AND indexname = 'idx_master_products_name_normalized_partial';
+
+-- Verifikasi 4: Function upsert_master_products_no_barcode ada?
+-- Expected result: upsert_master_products_no_barcode | public
+-- Artinya: function ada di schema public, siap dipanggil via RPC
+SELECT routine_name, routine_schema
+FROM information_schema.routines
+WHERE routine_name = 'upsert_master_products_no_barcode' AND routine_schema = 'public';
 </file>
 
 <file path="src/input.css">
@@ -241,6 +338,77 @@ module.exports = {
   },
   plugins: [],
 }
+</file>
+
+<file path="migrations/005_add_name_normalized_index.sql">
+-- ========================================================================
+-- DEPRECATED: File ini sudah digantikan oleh 007_consolidated_master_dedup.sql
+-- Jangan jalankan file ini lagi. Gunakan 007 untuk setup idempotent lengkap.
+-- ========================================================================
+
+-- Migration 005: Add name_normalized generated column and partial unique index for dedup by name (case-insensitive)
+-- Purpose: Support dedup of master_products without barcode based on normalized (lowercased, trimmed) name
+
+-- Step 0: Drop NOT NULL constraint from barcode to allow products without barcode
+ALTER TABLE master_products
+ALTER COLUMN barcode DROP NOT NULL;
+
+-- Step 1: Add generated column name_normalized (automatically maintains lower(trim(name)))
+ALTER TABLE master_products
+ADD COLUMN name_normalized TEXT GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED;
+
+-- Step 2: Add partial unique index on name_normalized
+-- Index only applies to rows where barcode IS NULL (rows without barcode)
+-- This ensures no duplicate names (case-insensitive) for barcode-less products
+-- Rows WITH barcode keep their existing barcode-based dedup (unchanged)
+CREATE UNIQUE INDEX idx_master_products_name_normalized_partial
+ON master_products(name_normalized)
+WHERE barcode IS NULL;
+</file>
+
+<file path="migrations/006_upsert_master_no_barcode_function.sql">
+-- ========================================================================
+-- DEPRECATED: File ini sudah digantikan oleh 007_consolidated_master_dedup.sql
+-- Jangan jalankan file ini lagi. Gunakan 007 untuk setup idempotent lengkap.
+-- ========================================================================
+
+-- Migration 006: Postgres function untuk upsert master_products tanpa barcode dengan partial unique index predicate
+-- Purpose: Workaround PostgREST limitation (tidak bisa generate ON CONFLICT ... WHERE predicate via .upsert())
+
+CREATE OR REPLACE FUNCTION public.upsert_master_products_no_barcode(rows jsonb)
+RETURNS TABLE(inserted_count int, skipped_count int) 
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+DECLARE
+  v_inserted int;
+  v_total int;
+BEGIN
+  -- Hitung total baris input
+  v_total := jsonb_array_length(rows);
+  
+  -- Insert dengan ON CONFLICT yang include WHERE predicate (partial unique index)
+  WITH input_rows AS (
+    SELECT (r->>'name')::text AS name
+    FROM jsonb_array_elements(rows) AS r
+  ),
+  ins AS (
+    INSERT INTO public.master_products (name, barcode)
+    SELECT name, NULL 
+    FROM input_rows
+    WHERE name IS NOT NULL AND TRIM(name) <> ''
+    ON CONFLICT (name_normalized) WHERE barcode IS NULL DO NOTHING
+    RETURNING 1
+  )
+  SELECT COUNT(*) INTO v_inserted FROM ins;
+  
+  -- Return inserted count dan skipped count
+  RETURN QUERY SELECT v_inserted, (v_total - v_inserted);
+END;
+$$;
+
+COMMENT ON FUNCTION public.upsert_master_products_no_barcode(jsonb) IS 
+'Upsert master_products rows tanpa barcode. Dedup by name_normalized (case-insensitive). Requires partial unique index WHERE barcode IS NULL.';
 </file>
 
 <file path="sw.js">
@@ -928,10 +1096,13 @@ async function fetchAndCache(request, cacheName) {
         <div x-show="csvErrors.length" x-cloak>
           <p class="text-[12.5px] font-medium text-[var(--ink-muted)] mb-1.5">Baris dengan error (dilewati otomatis):</p>
           <ul class="text-[12px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2 space-y-1 max-h-32 overflow-y-auto">
-            <template x-for="(msg, i) in csvErrors" :key="i">
+            <template x-for="(msg, i) in csvErrors.slice(0, 50)" :key="i">
               <li x-text="msg"></li>
             </template>
           </ul>
+          <p x-show="csvErrors.length > 50" x-cloak class="text-[11.5px] text-rose-700 font-medium mt-1.5">
+            ...dan <span x-text="csvErrors.length - 50"></span> error lainnya (baris disembunyikan, perbaiki isu di atas dulu).
+          </p>
         </div>
 
         <!-- Conflicts -->
@@ -1051,8 +1222,9 @@ async function fetchAndCache(request, cacheName) {
             <input id="masterSearchInput" type="text"
                    x-model="masterSearch"
                    @input.debounce.300ms="searchMaster()"
+                   @keydown.enter.prevent="searchMaster()"
                    placeholder="Cari nama produk atau scan barcode..."
-                   class="admin-input pl-9 w-full text-[13.5px] py-2.5" />
+                   class="admin-input !pl-9 w-full text-[13.5px] py-2.5" />
           </div>
           <p class="text-[11.5px] text-[var(--ink-muted)] leading-snug">Ketik minimal 1 karakter atau scan barcode. Hasil dibatasi 30 data (server-side).</p>
         </div>
@@ -1135,6 +1307,74 @@ async function fetchAndCache(request, cacheName) {
           </div>
           <p class="text-[11px] text-[var(--ink-muted)]">Template master: header <span class="font-mono font-medium text-[var(--ink)]">name, barcode</span>. Barcode diproses sebagai string.</p>
         </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: KONFIRMASI IMPORT MASTER CSV
+  ========================================================== -->
+  <div x-show="masterConfirmModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-[16px] font-bold text-[var(--ink)]">Konfirmasi Import CSV Master</h3>
+          <p class="text-[12.5px] text-[var(--ink-muted)] mt-1">
+            Data CSV akan diimpor ke tabel <code class="text-[11.5px] bg-[var(--surface-sunken)] px-1.5 py-0.5 rounded font-mono">master_products</code>.
+          </p>
+        </div>
+        <button @click="masterConfirmModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[12.5px] text-amber-800 space-y-1">
+        <p class="font-semibold">Perhatian:</p>
+        <ul class="list-disc list-inside space-y-0.5 text-[12px]">
+          <li>File ini bisa berisi hingga puluhan ribu baris.</li>
+          <li>Proses berjalan bertahap dalam batch (1.000 baris per batch).</li>
+        </ul>
+      </div>
+      <div class="flex items-center gap-2.5 pt-1">
+        <button type="button" @click="masterConfirmModalOpen = false; masterImportFile = null;" class="btn-ghost flex-1">Batal</button>
+        <button type="button" @click="processMasterCsv()" class="btn-primary flex-1">Lanjutkan Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: RINGKASAN HASIL IMPORT MASTER CSV
+  ========================================================== -->
+  <div x-show="masterResultsModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-[16px] font-bold text-[var(--ink)]">Import Master Selesai</h3>
+          <p class="text-[12.5px] text-[var(--ink-muted)] mt-0.5">Ringkasan hasil pemrosesan CSV Master Produk.</p>
+        </div>
+        <button @click="masterResultsModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-2.5 text-center">
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+          <div class="text-[11.5px] text-[var(--ink-muted)] font-medium">Total CSV</div>
+          <div class="text-[16px] font-bold text-[var(--ink)]" x-text="masterImportResults.total"></div>
+        </div>
+        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+          <div class="text-[11.5px] text-emerald-700 font-medium">Berhasil</div>
+          <div class="text-[16px] font-bold text-emerald-700" x-text="masterImportResults.success"></div>
+        </div>
+        <div class="rounded-xl bg-amber-50 border border-amber-200 p-3">
+          <div class="text-[11.5px] text-amber-700 font-medium">Dilewati (Duplikat)</div>
+          <div class="text-[16px] font-bold text-amber-700" x-text="masterImportResults.skipped"></div>
+        </div>
+        <div class="rounded-xl bg-rose-50 border border-rose-200 p-3">
+          <div class="text-[11.5px] text-rose-700 font-medium">Gagal</div>
+          <div class="text-[16px] font-bold text-rose-700" x-text="masterImportResults.failed"></div>
+        </div>
+      </div>
+      <div class="pt-1">
+        <button type="button" @click="masterResultsModalOpen = false" class="btn-primary w-full">Tutup</button>
       </div>
     </div>
   </div>
@@ -1269,6 +1509,10 @@ async function fetchAndCache(request, cacheName) {
         masterImporting: false,
         masterImportProgress: 0,
         masterImportStats: { total: 0, processed: 0, success: 0, skipped: 0, failed: 0, currentBatch: 0, totalBatches: 0 },
+        masterConfirmModalOpen: false,
+        masterImportFile: null,
+        masterResultsModalOpen: false,
+        masterImportResults: { total: 0, success: 0, skipped: 0, failed: 0 },
 
         // ---- dashboard stats ----
         statsLoading: true,
@@ -1653,6 +1897,16 @@ async function fetchAndCache(request, cacheName) {
         },
 
         processCsv(rows) {
+          // Guard: file terlalu besar untuk katalog aktif
+          if (rows.length > 5000) {
+            if (!confirm(
+              `File ini berisi ${rows.length.toLocaleString('id-ID')} baris.\n\n` +
+              `Import ini untuk KATALOG AKTIF (bukan database master).\n` +
+              `Kalau Anda ingin import ke database master, gunakan "Database Master Produk" > "Import CSV Master".\n\n` +
+              `Lanjutkan import ${rows.length.toLocaleString('id-ID')} produk ke katalog aktif?`
+            )) return;
+          }
+
           const errors = [];
           const draftsByKey = new Map(); // key = barcode, atau 'name:xxx' jika tanpa barcode
 
@@ -1811,7 +2065,7 @@ async function fetchAndCache(request, cacheName) {
 
         // ---- master products ----
         async searchMaster() {
-          const term = this.masterSearch.trim();
+          const term = String(this.masterSearch || "").trim();
           if (!term) {
             this.masterResults = [];
             return;
@@ -1849,13 +2103,15 @@ async function fetchAndCache(request, cacheName) {
           event.target.value = "";
           if (!file) return;
 
-          if (!confirm(
-            `Anda akan mengimpor data CSV ke tabel master_products.\n\n` +
-            `File ini bisa berisi hingga 28.770 baris.\n` +
-            `Proses akan berjalan dalam beberapa chunk (1000 baris per batch).\n\n` +
-            `Lanjutkan?`
-          )) return;
+          this.masterImportFile = file;
+          this.masterConfirmModalOpen = true;
+        },
 
+        async processMasterCsv() {
+          const file = this.masterImportFile;
+          if (!file) return;
+
+          this.masterConfirmModalOpen = false;
           const CHUNK_SIZE = 1000;
           try {
             const results = await new Promise((resolve, reject) => Papa.parse(file, {
@@ -1879,16 +2135,57 @@ async function fetchAndCache(request, cacheName) {
             for (let i = 0; i < totalData; i += CHUNK_SIZE) {
               const chunk = rows.slice(i, i + CHUNK_SIZE);
               this.masterImportStats.currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
-              const { data, error } = await supabaseClient
-                .from("master_products")
-                .upsert(chunk.map((row) => ({ name: row.name, barcode: row.barcode || null })), {
-                  onConflict: "barcode", ignoreDuplicates: true, defaultToNull: false,
-                })
-                .select("id");
-              const inserted = error ? 0 : (data ? data.length : 0);
-              this.masterImportStats.success += inserted;
-              this.masterImportStats.skipped += error ? 0 : chunk.length - inserted;
-              this.masterImportStats.failed += error ? chunk.length : 0;
+
+              // Pisahkan chunk: dengan barcode vs tanpa barcode
+              const withBarcode = [];
+              const withoutBarcode = [];
+              for (const row of chunk) {
+                if (row.barcode) {
+                  withBarcode.push({ name: row.name, barcode: row.barcode });
+                } else {
+                  withoutBarcode.push({ name: row.name, barcode: null });
+                }
+              }
+
+              let batchSuccess = 0;
+              let batchSkipped = 0;
+              let batchFailed = 0;
+
+              // Kelompok 1: Punya barcode -> onConflict "barcode"
+              if (withBarcode.length > 0) {
+                const { data: resBar, error: errBar } = await supabaseClient
+                  .from("master_products")
+                  .upsert(withBarcode, {
+                    onConflict: "barcode",
+                    ignoreDuplicates: true,
+                    defaultToNull: false,
+                  })
+                  .select("id");
+                if (errBar) {
+                  batchFailed += withBarcode.length;
+                } else {
+                  const ins = resBar ? resBar.length : 0;
+                  batchSuccess += ins;
+                  batchSkipped += (withBarcode.length - ins);
+                }
+              }
+
+              // Kelompok 2: Tanpa barcode -> RPC upsert_master_products_no_barcode
+              if (withoutBarcode.length > 0) {
+                const { data: resNoBar, error: errNoBar } = await supabaseClient
+                  .rpc("upsert_master_products_no_barcode", { rows: withoutBarcode });
+                if (errNoBar) {
+                  batchFailed += withoutBarcode.length;
+                } else {
+                  const rpcResult = (Array.isArray(resNoBar) ? resNoBar[0] : resNoBar) || { inserted_count: 0, skipped_count: 0 };
+                  batchSuccess += Number(rpcResult.inserted_count || 0);
+                  batchSkipped += Number(rpcResult.skipped_count || 0);
+                }
+              }
+
+              this.masterImportStats.success += batchSuccess;
+              this.masterImportStats.skipped += batchSkipped;
+              this.masterImportStats.failed += batchFailed;
               this.masterImportStats.processed += chunk.length;
               this.masterImportProgress = Math.round((this.masterImportStats.processed / totalData) * 100);
               await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1897,10 +2194,18 @@ async function fetchAndCache(request, cacheName) {
             this.masterImporting = false;
             await this.searchMaster();
             const stats = this.masterImportStats;
-            alert(`Import Master Selesai!\nTotal CSV: ${stats.total}\nBerhasil Ditambahkan: ${stats.success}\nDilewati (Duplikat Barcode): ${stats.skipped}\nGagal: ${stats.failed}`);
+            this.masterImportResults = {
+              total: stats.total,
+              success: stats.success,
+              skipped: stats.skipped,
+              failed: stats.failed,
+            };
+            this.masterImportFile = null;
+            this.masterResultsModalOpen = true;
           } catch (err) {
             this.masterImporting = false;
-            alert("Gagal memproses CSV master: " + err.message);
+            this.masterImportFile = null;
+            this.showToast("Gagal memproses CSV master: " + err.message);
           }
         },
 

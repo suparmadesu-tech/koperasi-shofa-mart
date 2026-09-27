@@ -1640,7 +1640,7 @@
 
         async useMasterProduct(mp) {
           if (mp.inCatalog) {
-            alert(`Produk ini sudah ada di katalog aktif.`);
+            this.showToast(`Produk ini sudah ada di katalog aktif.`);
             return;
           }
 
@@ -1652,7 +1652,7 @@
               .maybeSingle();
 
             if (existing) {
-              alert(`Produk dengan barcode ${mp.barcode} sudah terdaftar di Katalog Koperasi (${existing.name}).`);
+              this.showToast(`Produk dengan barcode ${mp.barcode} sudah terdaftar di Katalog Koperasi (${existing.name}).`);
               return;
             }
           }
