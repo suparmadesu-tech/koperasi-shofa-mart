@@ -889,7 +889,12 @@
           const barcode = decodedText.trim();
           const product = this.allProducts.find((p) => p.barcode === barcode);
           if (product) { this.showScannedProduct(product); }
-          else { this.lastScannedBarcode = barcode; this.scannerState = "not-found"; this.isProcessingScan = false; }
+          else {
+            this.lastScannedBarcode = barcode;
+            this.scannerState = "not-found";
+            this.isProcessingScan = false;
+            if (this.html5QrCode) { try { await this.html5QrCode.stop(); } catch (e) {} }
+          }
         },
 
         showScannedProduct(product) {
@@ -910,8 +915,7 @@
 
         resumeScanning() {
           this.scannerState = "active"; this.isProcessingScan = false;
-          if (this.html5QrCode) { try { this.html5QrCode.resume(); } catch (e) { this.startCamera(); } }
-          else { this.startCamera(); }
+          this.startCamera();
         },
 
         goToManualSearch() {

@@ -4,9 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Admin — Katalog Koperasi</title>
+<meta name="robots" content="noindex">
 
-<!-- Tailwind CSS (CDN) -->
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind CSS (compiled) -->
+<link rel="stylesheet" href="./styles.css" />
 
 <!-- Alpine.js (CDN) -->
 <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -1391,9 +1392,24 @@
           const conflicts = [];
           const newOnes = [];
 
+          // Lookup nama-ternormalisasi -> produk existing TANPA barcode.
+          // Aturan ini sengaja disamakan dengan dedup master_products (LOWER(TRIM(name))),
+          // dan hanya dicocokkan ke produk existing yang JUGA tanpa barcode —
+          // supaya konsisten dengan constraint DB (partial unique index WHERE barcode IS NULL).
+          const existingByNormalizedName = new Map();
+          this.allProducts.forEach((p) => {
+            if (!p.barcode) {
+              const key = p.name.trim().toLowerCase();
+              if (!existingByNormalizedName.has(key)) existingByNormalizedName.set(key, p);
+            }
+          });
+
           drafts.forEach((d) => {
             if (d.barcode) {
               const existing = this.allProducts.find((p) => p.barcode === d.barcode);
+              if (existing) { conflicts.push({ draft: d, existing, action: "skip" }); return; }
+            } else {
+              const existing = existingByNormalizedName.get(d.name.trim().toLowerCase());
               if (existing) { conflicts.push({ draft: d, existing, action: "skip" }); return; }
             }
             newOnes.push(d);
@@ -1414,9 +1430,23 @@
           let inserted = 0, updated = 0, skipped = 0, failed = 0;
           const updatedBy = this.session?.user?.email || null;
 
-          for (const d of this.csvNewProducts) {
-            const { error } = await supabaseClient.from("products").insert({ ...d, updated_by: updatedBy });
-            if (error) failed++; else inserted++;
+          const INSERT_CHUNK_SIZE = 500;
+          for (let i = 0; i < this.csvNewProducts.length; i += INSERT_CHUNK_SIZE) {
+            const chunk = this.csvNewProducts.slice(i, i + INSERT_CHUNK_SIZE)
+              .map((d) => ({ ...d, updated_by: updatedBy }));
+
+            const { error } = await supabaseClient.from("products").insert(chunk);
+            if (!error) {
+              inserted += chunk.length;
+            } else {
+              // Satu chunk gagal (mis. konflik barcode race condition) — fallback ke
+              // insert satu-per-satu HANYA untuk chunk ini, supaya baris lain di chunk
+              // yang sama tidak ikut gagal dan hitungan sukses/gagal tetap akurat per baris.
+              for (const row of chunk) {
+                const { error: rowError } = await supabaseClient.from("products").insert(row);
+                if (rowError) failed++; else inserted++;
+              }
+            }
           }
 
           for (const c of this.csvConflicts) {
@@ -1565,11 +1595,17 @@
               const chunk = rows.slice(i, i + CHUNK_SIZE);
               this.masterImportStats.currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
 
-              // Pisahkan chunk: dengan barcode vs tanpa barcode
+              // Pisahkan chunk: dengan barcode vs tanpa barcode.
+              // Baris dengan barcode TAPI name kosong dianggap invalid (kolom name wajib
+              // NOT NULL di master_products) — langsung dihitung "failed", tidak dikirim
+              // ke server sama sekali. Baris tanpa barcode sudah otomatis punya name terisi,
+              // karena filter awal di processMasterCsv (row.name || row.barcode) menjamin itu.
               const withBarcode = [];
               const withoutBarcode = [];
+              let invalidNameCount = 0;
               for (const row of chunk) {
                 if (row.barcode) {
+                  if (!row.name) { invalidNameCount++; continue; }
                   withBarcode.push({ name: row.name, barcode: row.barcode });
                 } else {
                   withoutBarcode.push({ name: row.name, barcode: null });
@@ -1578,7 +1614,7 @@
 
               let batchSuccess = 0;
               let batchSkipped = 0;
-              let batchFailed = 0;
+              let batchFailed = invalidNameCount;
 
               // Kelompok 1: Punya barcode -> onConflict "barcode"
               if (withBarcode.length > 0) {
