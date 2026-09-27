@@ -525,10 +525,13 @@
         <div x-show="csvErrors.length" x-cloak>
           <p class="text-[12.5px] font-medium text-[var(--ink-muted)] mb-1.5">Baris dengan error (dilewati otomatis):</p>
           <ul class="text-[12px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2 space-y-1 max-h-32 overflow-y-auto">
-            <template x-for="(msg, i) in csvErrors" :key="i">
+            <template x-for="(msg, i) in csvErrors.slice(0, 50)" :key="i">
               <li x-text="msg"></li>
             </template>
           </ul>
+          <p x-show="csvErrors.length > 50" x-cloak class="text-[11.5px] text-rose-700 font-medium mt-1.5">
+            ...dan <span x-text="csvErrors.length - 50"></span> error lainnya (baris disembunyikan, perbaiki isu di atas dulu).
+          </p>
         </div>
 
         <!-- Conflicts -->
@@ -738,6 +741,74 @@
   </div>
 
   <!-- =========================================================
+       MODAL: KONFIRMASI IMPORT MASTER CSV
+  ========================================================== -->
+  <div x-show="masterConfirmModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-[16px] font-bold text-[var(--ink)]">Konfirmasi Import CSV Master</h3>
+          <p class="text-[12.5px] text-[var(--ink-muted)] mt-1">
+            Data CSV akan diimpor ke tabel <code class="text-[11.5px] bg-[var(--surface-sunken)] px-1.5 py-0.5 rounded font-mono">master_products</code>.
+          </p>
+        </div>
+        <button @click="masterConfirmModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[12.5px] text-amber-800 space-y-1">
+        <p class="font-semibold">Perhatian:</p>
+        <ul class="list-disc list-inside space-y-0.5 text-[12px]">
+          <li>File ini bisa berisi hingga puluhan ribu baris.</li>
+          <li>Proses berjalan bertahap dalam batch (1.000 baris per batch).</li>
+        </ul>
+      </div>
+      <div class="flex items-center gap-2.5 pt-1">
+        <button type="button" @click="masterConfirmModalOpen = false; masterImportFile = null;" class="btn-ghost flex-1">Batal</button>
+        <button type="button" @click="processMasterCsv()" class="btn-primary flex-1">Lanjutkan Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: RINGKASAN HASIL IMPORT MASTER CSV
+  ========================================================== -->
+  <div x-show="masterResultsModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-[16px] font-bold text-[var(--ink)]">Import Master Selesai</h3>
+          <p class="text-[12.5px] text-[var(--ink-muted)] mt-0.5">Ringkasan hasil pemrosesan CSV Master Produk.</p>
+        </div>
+        <button @click="masterResultsModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-2 gap-2.5 text-center">
+        <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+          <div class="text-[11.5px] text-[var(--ink-muted)] font-medium">Total CSV</div>
+          <div class="text-[16px] font-bold text-[var(--ink)]" x-text="masterImportResults.total"></div>
+        </div>
+        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+          <div class="text-[11.5px] text-emerald-700 font-medium">Berhasil</div>
+          <div class="text-[16px] font-bold text-emerald-700" x-text="masterImportResults.success"></div>
+        </div>
+        <div class="rounded-xl bg-amber-50 border border-amber-200 p-3">
+          <div class="text-[11.5px] text-amber-700 font-medium">Dilewati (Duplikat)</div>
+          <div class="text-[16px] font-bold text-amber-700" x-text="masterImportResults.skipped"></div>
+        </div>
+        <div class="rounded-xl bg-rose-50 border border-rose-200 p-3">
+          <div class="text-[11.5px] text-rose-700 font-medium">Gagal</div>
+          <div class="text-[16px] font-bold text-rose-700" x-text="masterImportResults.failed"></div>
+        </div>
+      </div>
+      <div class="pt-1">
+        <button type="button" @click="masterResultsModalOpen = false" class="btn-primary w-full">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
        TOAST
   ========================================================== -->
   <div x-show="toast" x-cloak x-transition
@@ -867,6 +938,10 @@
         masterImporting: false,
         masterImportProgress: 0,
         masterImportStats: { total: 0, processed: 0, success: 0, skipped: 0, failed: 0, currentBatch: 0, totalBatches: 0 },
+        masterConfirmModalOpen: false,
+        masterImportFile: null,
+        masterResultsModalOpen: false,
+        masterImportResults: { total: 0, success: 0, skipped: 0, failed: 0 },
 
         // ---- dashboard stats ----
         statsLoading: true,
@@ -1251,6 +1326,16 @@
         },
 
         processCsv(rows) {
+          // Guard: file terlalu besar untuk katalog aktif
+          if (rows.length > 5000) {
+            if (!confirm(
+              `File ini berisi ${rows.length.toLocaleString('id-ID')} baris.\n\n` +
+              `Import ini untuk KATALOG AKTIF (bukan database master).\n` +
+              `Kalau Anda ingin import ke database master, gunakan "Database Master Produk" > "Import CSV Master".\n\n` +
+              `Lanjutkan import ${rows.length.toLocaleString('id-ID')} produk ke katalog aktif?`
+            )) return;
+          }
+
           const errors = [];
           const draftsByKey = new Map(); // key = barcode, atau 'name:xxx' jika tanpa barcode
 
@@ -1447,13 +1532,15 @@
           event.target.value = "";
           if (!file) return;
 
-          if (!confirm(
-            `Anda akan mengimpor data CSV ke tabel master_products.\n\n` +
-            `File ini bisa berisi hingga 28.770 baris.\n` +
-            `Proses akan berjalan dalam beberapa chunk (1000 baris per batch).\n\n` +
-            `Lanjutkan?`
-          )) return;
+          this.masterImportFile = file;
+          this.masterConfirmModalOpen = true;
+        },
 
+        async processMasterCsv() {
+          const file = this.masterImportFile;
+          if (!file) return;
+
+          this.masterConfirmModalOpen = false;
           const CHUNK_SIZE = 1000;
           try {
             const results = await new Promise((resolve, reject) => Papa.parse(file, {
@@ -1477,16 +1564,57 @@
             for (let i = 0; i < totalData; i += CHUNK_SIZE) {
               const chunk = rows.slice(i, i + CHUNK_SIZE);
               this.masterImportStats.currentBatch = Math.floor(i / CHUNK_SIZE) + 1;
-              const { data, error } = await supabaseClient
-                .from("master_products")
-                .upsert(chunk.map((row) => ({ name: row.name, barcode: row.barcode || null })), {
-                  onConflict: "barcode", ignoreDuplicates: true, defaultToNull: false,
-                })
-                .select("id");
-              const inserted = error ? 0 : (data ? data.length : 0);
-              this.masterImportStats.success += inserted;
-              this.masterImportStats.skipped += error ? 0 : chunk.length - inserted;
-              this.masterImportStats.failed += error ? chunk.length : 0;
+
+              // Pisahkan chunk: dengan barcode vs tanpa barcode
+              const withBarcode = [];
+              const withoutBarcode = [];
+              for (const row of chunk) {
+                if (row.barcode) {
+                  withBarcode.push({ name: row.name, barcode: row.barcode });
+                } else {
+                  withoutBarcode.push({ name: row.name, barcode: null });
+                }
+              }
+
+              let batchSuccess = 0;
+              let batchSkipped = 0;
+              let batchFailed = 0;
+
+              // Kelompok 1: Punya barcode -> onConflict "barcode"
+              if (withBarcode.length > 0) {
+                const { data: resBar, error: errBar } = await supabaseClient
+                  .from("master_products")
+                  .upsert(withBarcode, {
+                    onConflict: "barcode",
+                    ignoreDuplicates: true,
+                    defaultToNull: false,
+                  })
+                  .select("id");
+                if (errBar) {
+                  batchFailed += withBarcode.length;
+                } else {
+                  const ins = resBar ? resBar.length : 0;
+                  batchSuccess += ins;
+                  batchSkipped += (withBarcode.length - ins);
+                }
+              }
+
+              // Kelompok 2: Tanpa barcode -> RPC upsert_master_products_no_barcode
+              if (withoutBarcode.length > 0) {
+                const { data: resNoBar, error: errNoBar } = await supabaseClient
+                  .rpc("upsert_master_products_no_barcode", { rows: withoutBarcode });
+                if (errNoBar) {
+                  batchFailed += withoutBarcode.length;
+                } else {
+                  const rpcResult = (Array.isArray(resNoBar) ? resNoBar[0] : resNoBar) || { inserted_count: 0, skipped_count: 0 };
+                  batchSuccess += Number(rpcResult.inserted_count || 0);
+                  batchSkipped += Number(rpcResult.skipped_count || 0);
+                }
+              }
+
+              this.masterImportStats.success += batchSuccess;
+              this.masterImportStats.skipped += batchSkipped;
+              this.masterImportStats.failed += batchFailed;
               this.masterImportStats.processed += chunk.length;
               this.masterImportProgress = Math.round((this.masterImportStats.processed / totalData) * 100);
               await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1495,10 +1623,18 @@
             this.masterImporting = false;
             await this.searchMaster();
             const stats = this.masterImportStats;
-            alert(`Import Master Selesai!\nTotal CSV: ${stats.total}\nBerhasil Ditambahkan: ${stats.success}\nDilewati (Duplikat Barcode): ${stats.skipped}\nGagal: ${stats.failed}`);
+            this.masterImportResults = {
+              total: stats.total,
+              success: stats.success,
+              skipped: stats.skipped,
+              failed: stats.failed,
+            };
+            this.masterImportFile = null;
+            this.masterResultsModalOpen = true;
           } catch (err) {
             this.masterImporting = false;
-            alert("Gagal memproses CSV master: " + err.message);
+            this.masterImportFile = null;
+            this.showToast("Gagal memproses CSV master: " + err.message);
           }
         },
 

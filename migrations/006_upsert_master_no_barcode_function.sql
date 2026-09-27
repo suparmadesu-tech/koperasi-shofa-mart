@@ -1,3 +1,8 @@
+-- ========================================================================
+-- DEPRECATED: File ini sudah digantikan oleh 007_consolidated_master_dedup.sql
+-- Jangan jalankan file ini lagi. Gunakan 007 untuk setup idempotent lengkap.
+-- ========================================================================
+
 -- Migration 006: Postgres function untuk upsert master_products tanpa barcode dengan partial unique index predicate
 -- Purpose: Workaround PostgREST limitation (tidak bisa generate ON CONFLICT ... WHERE predicate via .upsert())
 

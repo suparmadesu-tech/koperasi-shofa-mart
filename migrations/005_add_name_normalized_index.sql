@@ -1,5 +1,14 @@
+-- ========================================================================
+-- DEPRECATED: File ini sudah digantikan oleh 007_consolidated_master_dedup.sql
+-- Jangan jalankan file ini lagi. Gunakan 007 untuk setup idempotent lengkap.
+-- ========================================================================
+
 -- Migration 005: Add name_normalized generated column and partial unique index for dedup by name (case-insensitive)
 -- Purpose: Support dedup of master_products without barcode based on normalized (lowercased, trimmed) name
+
+-- Step 0: Drop NOT NULL constraint from barcode to allow products without barcode
+ALTER TABLE master_products
+ALTER COLUMN barcode DROP NOT NULL;
 
 -- Step 1: Add generated column name_normalized (automatically maintains lower(trim(name)))
 ALTER TABLE master_products
