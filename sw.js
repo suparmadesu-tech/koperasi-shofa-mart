@@ -18,7 +18,11 @@
 // service worker lama otomatis dibersihkan dan versi baru dipakai.
 // =====================================================================
 
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
+
+// Anon key yang sama dengan index.html/admin.html — dipakai untuk membedakan
+// request PUBLIK (pakai anon key) dari request AUTENTIKASI (pakai access token user).
+const SUPABASE_ANON_KEY = "sb_publishable_EKQhuybMHQGSp-Yk2tie7Q_WWnZV9iO";
 const SHELL_CACHE = `koperasi-shell-${CACHE_VERSION}`;
 const DATA_CACHE = `koperasi-data-${CACHE_VERSION}`;
 const LIB_CACHE = `koperasi-libs-${CACHE_VERSION}`;
@@ -85,8 +89,17 @@ self.addEventListener("fetch", (event) => {
   // Endpoint auth (login admin) selalu langsung ke network, jangan diintersep sama sekali
   if (isSupabase && url.pathname.startsWith("/auth/")) return;
 
-  // Data katalog (products & categories) — network-first, fallback ke cache
+  // Data katalog (products & categories) — network-first, fallback ke cache.
+  // TAPI: kalau request ini terautentikasi (dipanggil dari admin.html setelah login,
+  // header Authorization berisi access token user, bukan anon key), JANGAN PERNAH
+  // disentuh cache sama sekali — langsung ke network, sama seperti endpoint auth.
+  // Ini penting karena Service Worker aktif untuk SELURUH origin (bukan cuma index.html),
+  // jadi kalau tidak dibedakan, data produk milik admin bisa ikut tersimpan di Cache API.
   if (isSupabase && url.pathname.startsWith("/rest/v1/")) {
+    const authHeader = req.headers.get("Authorization") || "";
+    const isPublicRequest = authHeader === `Bearer ${SUPABASE_ANON_KEY}` || authHeader === "";
+    if (!isPublicRequest) return;
+
     event.respondWith(networkFirst(req, DATA_CACHE));
     return;
   }
