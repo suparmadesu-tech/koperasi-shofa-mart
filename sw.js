@@ -18,7 +18,7 @@
 // service worker lama otomatis dibersihkan dan versi baru dipakai.
 // =====================================================================
 
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 
 // Anon key yang sama dengan index.html/admin.html — dipakai untuk membedakan
 // request PUBLIK (pakai anon key) dari request AUTENTIKASI (pakai access token user).

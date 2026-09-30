@@ -18,6 +18,9 @@
 <!-- PapaParse (CDN) — parsing & generate CSV untuk import/export massal -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
+<!-- html5-qrcode (CDN) — barcode scanner via kamera -->
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
 <style>
   :root{
     /* Backgrounds & Surface */
@@ -417,7 +420,16 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="admin-label">Barcode (opsional)</label>
-            <input type="text" x-model="editingProduct.barcode" class="admin-input" placeholder="Kosongkan jika tanpa barcode" />
+            <div class="flex gap-2">
+              <input type="text" x-model="editingProduct.barcode" class="admin-input flex-1" placeholder="Kosongkan jika tanpa barcode" />
+              <button type="button" @click="openAdminScanner('productBarcode')"
+                       class="bg-[var(--surface-sunken)] hover:bg-[var(--border)] text-[var(--ink)] border border-[var(--border-strong)] rounded-lg px-3 py-2 transition flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         </section>
@@ -643,18 +655,27 @@
 
       <div class="flex-1 min-h-0 flex flex-col px-5 py-4 gap-4 overflow-hidden">
         <!-- Primary: Search -->
-        <div class="space-y-2.5 shrink-0">
+                <div class="space-y-2.5 shrink-0">
           <label for="masterSearchInput" class="admin-label !mb-0">Cari referensi</label>
-          <div class="relative">
-            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)]">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m19 19-3.2-3.2"/></svg>
-            </span>
-            <input id="masterSearchInput" type="text"
-                   x-model="masterSearch"
-                   @input.debounce.300ms="searchMaster()"
-                   @keydown.enter.prevent="searchMaster()"
-                   placeholder="Cari nama produk atau scan barcode..."
-                   class="admin-input !pl-9 w-full text-[13.5px] py-2.5" />
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-faint)]">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m19 19-3.2-3.2"/></svg>
+              </span>
+              <input id="masterSearchInput" type="text"
+                     x-model="masterSearch"
+                     @input.debounce.300ms="searchMaster()"
+                     @keydown.enter.prevent="searchMaster()"
+                     placeholder="Cari nama produk atau scan barcode..."
+                     class="admin-input !pl-9 w-full text-[13.5px] py-2.5" />
+            </div>
+            <button type="button" @click="openAdminScanner('masterSearch')"
+                    class="bg-[var(--surface-sunken)] hover:bg-[var(--border)] text-[var(--ink)] border border-[var(--border-strong)] rounded-lg px-3 py-2.5 transition flex items-center justify-center shrink-0">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+            </button>
           </div>
           <p class="text-[11.5px] text-[var(--ink-muted)] leading-snug">Ketik minimal 1 karakter atau scan barcode. Hasil dibatasi 30 data (server-side).</p>
         </div>
@@ -810,6 +831,53 @@
   </div>
 
   <!-- =========================================================
+       SCANNER MODAL
+  ========================================================== -->
+  <div x-show="scannerOpen" x-cloak
+       class="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center">
+    <div class="relative w-full h-full flex flex-col items-center justify-center p-4">
+      <!-- Close button -->
+      <button @click="closeAdminScanner()"
+              class="absolute top-4 right-4 z-10 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 transition">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+
+      <!-- Scanner content -->
+      <div class="w-full max-w-md">
+        <!-- Camera reader -->
+        <div id="admin-qr-reader" class="rounded-lg overflow-hidden mb-4"></div>
+
+        <!-- Status messages -->
+        <div x-show="scannerState === 'starting'" class="text-center text-white mb-4">
+          <p class="text-[14px] font-medium">Membuka kamera...</p>
+        </div>
+
+        <div x-show="scannerState === 'camera-error'" class="text-center mb-4">
+          <p class="text-white text-[14px] font-medium mb-3">Gagal membuka kamera</p>
+          <button @click="startAdminCamera()"
+                  class="bg-white text-black px-4 py-2 rounded-lg font-medium text-[13px] hover:bg-gray-200 transition">
+            Coba Lagi
+          </button>
+        </div>
+
+        <!-- Torch toggle (only show when active and supported) -->
+        <div x-show="scannerState === 'active' && isTorchSupported" class="flex justify-center mb-4">
+          <button @click="toggleAdminTorch()"
+                  :class="isTorchOn ? 'bg-yellow-400 text-black' : 'bg-white/20 text-white'"
+                  class="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-[13px] transition hover:opacity-90">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.343a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM15.657 14.657a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM11 17a1 1 0 102 0v-1a1 1 0 10-2 0v1zM5.343 15.657a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM4 10a1 1 0 01-1-1V8a1 1 0 012 0v1a1 1 0 01-1 1zM5.343 5.343a1 1 0 00-1.414-1.414L3.222 4.636a1 1 0 001.414 1.414l.707-.707zM10 5a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"></path>
+            </svg>
+            <span x-text="isTorchOn ? 'Matikan' : 'Nyalakan'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
        TOAST
   ========================================================== -->
   <div x-show="toast" x-cloak x-transition
@@ -954,6 +1022,14 @@
         // ---- toast ----
         toast: "",
         _toastTimer: null,
+
+        // ---- scanner ----
+        scannerOpen: false,
+        scannerState: "idle",   // idle | starting | active | camera-error
+        html5QrCode: null,
+        isTorchOn: false,
+        isTorchSupported: true,
+        scannerTargetField: null,   // "productBarcode" | "masterSearch"
 
         // ---- lifecycle ----
         init() {
@@ -1704,6 +1780,86 @@
           this.toast = msg;
           clearTimeout(this._toastTimer);
           this._toastTimer = setTimeout(() => { this.toast = ""; }, 4000);
+        },
+
+        // ---- scanner ----
+        openAdminScanner(targetField) {
+          this.scannerTargetField = targetField;
+          this.scannerOpen = true;
+          this.scannerState = "starting";
+          this.isTorchOn = false;
+          this.isTorchSupported = true;
+          this.$nextTick(() => this.startAdminCamera());
+        },
+
+        startAdminCamera() {
+          this.scannerState = "starting";
+          if (typeof Html5Qrcode === "undefined") { this.scannerState = "camera-error"; return; }
+
+          const mountScanner = () => {
+            this.html5QrCode = new Html5Qrcode("admin-qr-reader", { verbose: false });
+            const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.4 };
+
+            this.html5QrCode
+              .start({ facingMode: "environment" }, config,
+                (decodedText) => this.handleAdminScanSuccess(decodedText),
+                () => {})
+              .then(() => {
+                this.scannerState = "active";
+                // Check torch support after camera starts
+                this.html5QrCode.getRunningTrackCapabilities().then((caps) => {
+                  this.isTorchSupported = !!caps.torch;
+                }).catch(() => { this.isTorchSupported = false; });
+              })
+              .catch((err) => { console.error("Gagal membuka kamera:", err); this.scannerState = "camera-error"; });
+          };
+
+          if (this.html5QrCode) {
+            // .stop() bisa throw synchronous (bukan reject promise) kalau scanner
+            // sebelumnya gagal start dan tidak pernah benar-benar berjalan — makanya
+            // dibungkus try/catch di sini, bukan cuma .catch() di rantai promise.
+            try {
+              this.html5QrCode.stop().catch(() => {}).finally(() => { this.html5QrCode = null; mountScanner(); });
+            } catch (e) {
+              this.html5QrCode = null;
+              mountScanner();
+            }
+          } else {
+            mountScanner();
+          }
+        },
+
+        async toggleAdminTorch() {
+          if (!this.html5QrCode) return;
+          try {
+            const newTorchOn = !this.isTorchOn;
+            await this.html5QrCode.applyVideoConstraints({ advanced: [{ torch: newTorchOn }] });
+            this.isTorchOn = newTorchOn;
+          } catch (err) {
+            console.warn("Gagal toggle torch:", err);
+            this.isTorchOn = !this.isTorchOn; // Revert
+          }
+        },
+
+        handleAdminScanSuccess(decodedText) {
+          const barcode = decodedText.trim();
+          if (this.scannerTargetField === "productBarcode") {
+            this.editingProduct.barcode = barcode;
+          } else if (this.scannerTargetField === "masterSearch") {
+            this.masterSearch = barcode;
+            this.searchMaster();
+          }
+          this.closeAdminScanner();
+        },
+
+        closeAdminScanner() {
+          if (this.html5QrCode) {
+            this.html5QrCode.stop().catch(() => {}).finally(() => { this.html5QrCode.clear(); this.html5QrCode = null; });
+          }
+          this.scannerOpen = false;
+          this.scannerState = "idle";
+          this.isTorchOn = false;
+          this.scannerTargetField = null;
         },
       };
     }
