@@ -547,6 +547,16 @@
         <div id="qr-reader" class="rounded-2xl overflow-hidden shadow-2xl"></div>
         <p x-show="scannerState === 'starting'" class="text-center text-white/70 text-[13.5px] mt-5">Membuka kamera…</p>
         <p x-show="scannerState === 'active'" class="text-center text-white/70 text-[13.5px] mt-2">Arahkan kamera ke barcode produk</p>
+        <div x-show="scannerState === 'active' && isTorchSupported" class="flex justify-center mt-4">
+          <button @click="toggleTorch()"
+                  :class="isTorchOn ? 'bg-yellow-400 text-[#0F172A]' : 'bg-white/10 text-white'"
+                  class="flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-[13px] transition">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.343a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM15.657 14.657a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM11 17a1 1 0 102 0v-1a1 1 0 10-2 0v1zM5.343 15.657a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414l-.707-.707zM4 10a1 1 0 01-1-1V8a1 1 0 012 0v1a1 1 0 01-1 1zM5.343 5.343a1 1 0 00-1.414-1.414L3.222 4.636a1 1 0 001.414 1.414l.707-.707zM10 5a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"></path>
+            </svg>
+            <span x-text="isTorchOn ? 'Matikan' : 'Nyalakan'"></span>
+          </button>
+        </div>
       </div>
 
       <div x-show="scannerState === 'camera-error'" x-cloak class="w-full max-w-xs text-center space-y-4">
@@ -637,6 +647,8 @@
         html5QrCode: null,
         isProcessingScan: false,
         lastScannedBarcode: "",
+        isTorchOn: false,
+        isTorchSupported: true,
 
         // ---- lifecycle ----
         init() {
@@ -869,14 +881,41 @@
               .start({ facingMode: "environment" }, config,
                 (decodedText) => this.handleScanSuccess(decodedText),
                 () => {})
-              .then(() => { this.scannerState = "active"; })
+              .then(() => {
+                this.scannerState = "active";
+                this.isTorchOn = false;
+                try {
+                  const caps = this.html5QrCode.getRunningTrackCapabilities();
+                  this.isTorchSupported = !!(caps && caps.torch);
+                } catch (e) {
+                  this.isTorchSupported = false;
+                }
+              })
               .catch((err) => { console.error("Gagal membuka kamera:", err); this.scannerState = "camera-error"; });
           };
 
           if (this.html5QrCode) {
-            this.html5QrCode.stop().catch(() => {}).finally(() => { this.html5QrCode = null; mountScanner(); });
+            // .stop() bisa throw synchronous (bukan reject promise) kalau instance
+            // sebelumnya gagal start dan tidak pernah benar-benar berjalan.
+            try {
+              this.html5QrCode.stop().catch(() => {}).finally(() => { this.html5QrCode = null; mountScanner(); });
+            } catch (e) {
+              this.html5QrCode = null;
+              mountScanner();
+            }
           } else {
             mountScanner();
+          }
+        },
+
+        async toggleTorch() {
+          if (!this.html5QrCode) return;
+          const newTorchOn = !this.isTorchOn;
+          try {
+            await this.html5QrCode.applyVideoConstraints({ advanced: [{ torch: newTorchOn }] });
+            this.isTorchOn = newTorchOn;
+          } catch (err) {
+            console.warn("Gagal toggle torch:", err);
           }
         },
 
@@ -932,6 +971,7 @@
 
         closeScannerInternal() {
           this.scannerOpen = false; this.scannerState = "idle"; this.isProcessingScan = false;
+          this.isTorchOn = false;
           if (this.html5QrCode) {
             this.html5QrCode.stop().catch(() => {}).finally(() => { this.html5QrCode.clear(); this.html5QrCode = null; });
           }

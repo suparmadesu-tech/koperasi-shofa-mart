@@ -1806,10 +1806,12 @@
                 () => {})
               .then(() => {
                 this.scannerState = "active";
-                // Check torch support after camera starts
-                this.html5QrCode.getRunningTrackCapabilities().then((caps) => {
-                  this.isTorchSupported = !!caps.torch;
-                }).catch(() => { this.isTorchSupported = false; });
+                try {
+                  const caps = this.html5QrCode.getRunningTrackCapabilities();
+                  this.isTorchSupported = !!(caps && caps.torch);
+                } catch (e) {
+                  this.isTorchSupported = false;
+                }
               })
               .catch((err) => { console.error("Gagal membuka kamera:", err); this.scannerState = "camera-error"; });
           };
