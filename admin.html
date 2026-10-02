@@ -370,7 +370,8 @@
   <!-- =========================================================
        MODAL: TAMBAH / EDIT PRODUK
   ========================================================== -->
-  <div x-show="productModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+  <template x-if="productModalOpen">
+  <div x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
     <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
         <h2 class="text-[15.5px] font-semibold" x-text="editingProduct && editingProduct.id ? 'Edit Produk' : 'Tambah Produk'"></h2>
@@ -495,7 +496,7 @@
 
         <p x-show="formError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="formError"></p>
 
-        <div class="flex items-center gap-2.5 pt-2">
+        <div class="flex items-center gap-2.5 pt-3 pb-4 px-5 -mx-5 -mb-4 sticky bottom-0 bg-[var(--surface)] border-t border-[var(--border)]">
           <button type="button" @click="closeProductModal()" class="btn-ghost flex-1">Batal</button>
           <button type="submit" :disabled="savingProduct" class="btn-primary flex-1">
             <span x-show="!savingProduct">Simpan Produk</span>
@@ -505,6 +506,7 @@
       </form>
     </div>
   </div>
+  </template>
 
   <!-- =========================================================
        MODAL: REVIEW IMPORT CSV
@@ -1376,6 +1378,12 @@
 
         async toggleActive(p) {
           const nextState = !p.is_active;
+          // Hanya minta konfirmasi saat MENONAKTIFKAN (produk hilang dari katalog
+          // publik seketika) — mengaktifkan kembali tidak perlu konfirmasi karena
+          // efeknya cuma memunculkan kembali, bukan menyembunyikan.
+          if (!nextState && !confirm(`Nonaktifkan "${p.name}"? Produk ini akan langsung hilang dari katalog publik.`)) {
+            return;
+          }
           const { error } = await supabaseClient
             .from("products")
             .update({ is_active: nextState, updated_by: this.session?.user?.email || null })
