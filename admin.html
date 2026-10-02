@@ -170,6 +170,7 @@
       <nav class="space-y-1" aria-label="Navigasi admin">
         <a href="#produk" class="admin-nav-item admin-nav-active">Produk</a>
         <button type="button" @click="masterModalOpen = true" class="admin-nav-item w-full text-left">Master Produk</button>
+        <button type="button" @click="categoryModalOpen = true" class="admin-nav-item w-full text-left">Kelola Kategori</button>
       </nav>
       <div class="mt-auto pt-5 border-t border-slate-800">
         <button type="button" @click="logout()" class="admin-nav-item w-full text-left text-rose-300 hover:bg-rose-950/30">Keluar</button>
@@ -191,6 +192,7 @@
         <nav class="space-y-1" aria-label="Navigasi admin mobile">
           <a href="#produk" @click="mobileMenuOpen = false" class="admin-nav-item admin-nav-active">Produk</a>
           <button type="button" @click="masterModalOpen = true; mobileMenuOpen = false" class="admin-nav-item w-full text-left">Master Produk</button>
+          <button type="button" @click="categoryModalOpen = true; mobileMenuOpen = false" class="admin-nav-item w-full text-left">Kelola Kategori</button>
         </nav>
       </aside>
     </div>
@@ -795,6 +797,77 @@
   </div>
 
   <!-- =========================================================
+       MODAL: KELOLA KATEGORI
+  ========================================================== -->
+  <div x-show="categoryModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+      <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
+        <h2 class="text-[15.5px] font-semibold">Kelola Kategori</h2>
+        <button @click="categoryModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="p-5 space-y-2">
+        <template x-for="(cat, idx) in allCategories" :key="cat.id">
+          <div class="flex items-center gap-2.5 border border-[var(--border)] rounded-xl p-2.5">
+            <div class="flex flex-col gap-0.5 shrink-0">
+              <button type="button" @click="moveCategory(cat, -1)" :disabled="idx === 0" class="w-6 h-5 rounded bg-[var(--surface-sunken)] disabled:opacity-30 flex items-center justify-center text-[10px]">▲</button>
+              <button type="button" @click="moveCategory(cat, 1)" :disabled="idx === allCategories.length - 1" class="w-6 h-5 rounded bg-[var(--surface-sunken)] disabled:opacity-30 flex items-center justify-center text-[10px]">▼</button>
+            </div>
+            <span class="text-[10px] px-1.5 py-1 rounded bg-[var(--surface-sunken)] text-[var(--ink-muted)] shrink-0" x-text="cat.icon"></span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[13.5px] font-medium truncate" x-text="cat.name"></p>
+              <p class="text-[11px] text-[var(--ink-muted)]" x-text="productCountForCategory(cat.id) + ' produk'"></p>
+            </div>
+            <button type="button" @click="openEditCategory(cat)" class="px-2.5 py-1.5 rounded-lg border border-[var(--border)] text-[12px] font-medium shrink-0">Edit</button>
+            <button type="button" @click="deleteCategory(cat)" class="px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-[var(--danger)] shrink-0">Hapus</button>
+          </div>
+        </template>
+        <button type="button" @click="openAddCategory()" class="btn-secondary w-full mt-2">+ Tambah Kategori</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: TAMBAH / EDIT KATEGORI
+  ========================================================== -->
+  <div x-show="categoryFormModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-sm">
+      <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between">
+        <h2 class="text-[15.5px] font-semibold" x-text="editingCategory && editingCategory.id ? 'Edit Kategori' : 'Tambah Kategori'"></h2>
+        <button @click="closeCategoryFormModal()" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <form @submit.prevent="saveCategory()" class="px-5 py-4 space-y-3.5" x-show="editingCategory">
+        <div>
+          <label class="admin-label">Nama Kategori *</label>
+          <input type="text" x-model="editingCategory.name" required class="admin-input" placeholder="mis. Minuman" />
+        </div>
+        <div>
+          <label class="admin-label">Ikon</label>
+          <select x-model="editingCategory.icon" class="admin-input">
+            <option value="shopping-basket">Keranjang (umum)</option>
+            <option value="cup-soda">Minuman</option>
+            <option value="ice-cream-cone">Es krim</option>
+            <option value="candy">Permen</option>
+            <option value="flame">Api (pedas)</option>
+            <option value="cigarette">Rokok</option>
+          </select>
+        </div>
+        <p x-show="categoryFormError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="categoryFormError"></p>
+        <div class="flex items-center gap-2.5 pt-2">
+          <button type="button" @click="closeCategoryFormModal()" class="btn-ghost flex-1">Batal</button>
+          <button type="submit" :disabled="savingCategory" class="btn-primary flex-1">
+            <span x-show="!savingCategory">Simpan</span>
+            <span x-show="savingCategory" x-cloak>Menyimpan…</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
        MODAL: RINGKASAN HASIL IMPORT KATALOG AKTIF (CSV)
   ========================================================== -->
   <div x-show="csvResultsModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
@@ -1053,6 +1126,11 @@
         csvImporting: false,
         csvResultsModalOpen: false,
         csvImportResults: { inserted: 0, updated: 0, skipped: 0, failed: 0, failedItems: [] },
+        categoryModalOpen: false,
+        categoryFormModalOpen: false,
+        editingCategory: null,
+        savingCategory: false,
+        categoryFormError: "",
 
         // ---- master products ----
         masterModalOpen: false,
@@ -1456,6 +1534,85 @@
           p.is_active = nextState;
           this.showToast(nextState ? `"${p.name}" diaktifkan kembali.` : `"${p.name}" dinonaktifkan.`);
           this.applyFilters();
+        },
+
+        // ---- kategori ----
+        productCountForCategory(catId) {
+          return this.allProducts.filter((p) => p.category_id === catId).length;
+        },
+
+        openAddCategory() {
+          this.categoryFormError = "";
+          const maxOrder = this.allCategories.reduce((max, c) => Math.max(max, c.sort_order || 0), 0);
+          this.editingCategory = { id: null, name: "", icon: "shopping-basket", sort_order: maxOrder + 1 };
+          this.categoryFormModalOpen = true;
+        },
+
+        openEditCategory(cat) {
+          this.categoryFormError = "";
+          this.editingCategory = { id: cat.id, name: cat.name, icon: cat.icon, sort_order: cat.sort_order };
+          this.categoryFormModalOpen = true;
+        },
+
+        closeCategoryFormModal() {
+          this.categoryFormModalOpen = false;
+          this.editingCategory = null;
+          this.categoryFormError = "";
+        },
+
+        async saveCategory() {
+          const name = this.editingCategory.name.trim();
+          if (!name) { this.categoryFormError = "Nama kategori wajib diisi."; return; }
+
+          this.savingCategory = true;
+          this.categoryFormError = "";
+
+          const isEdit = !!this.editingCategory.id;
+          const payload = { name, icon: this.editingCategory.icon, sort_order: this.editingCategory.sort_order };
+          let error;
+          if (isEdit) {
+            ({ error } = await supabaseClient.from("categories").update(payload).eq("id", this.editingCategory.id));
+          } else {
+            ({ error } = await supabaseClient.from("categories").insert(payload));
+          }
+
+          this.savingCategory = false;
+          if (error) { this.categoryFormError = error.message; return; }
+
+          this.closeCategoryFormModal();
+          this.showToast(isEdit ? "Kategori diperbarui." : "Kategori ditambahkan.");
+          await this.loadData();
+        },
+
+        async moveCategory(cat, direction) {
+          const idx = this.allCategories.findIndex((c) => c.id === cat.id);
+          const swapIdx = idx + direction;
+          if (swapIdx < 0 || swapIdx >= this.allCategories.length) return;
+
+          const other = this.allCategories[swapIdx];
+          const catOrder = cat.sort_order;
+          const otherOrder = other.sort_order;
+
+          await Promise.all([
+            supabaseClient.from("categories").update({ sort_order: otherOrder }).eq("id", cat.id),
+            supabaseClient.from("categories").update({ sort_order: catOrder }).eq("id", other.id),
+          ]);
+          await this.loadData();
+        },
+
+        async deleteCategory(cat) {
+          const count = this.productCountForCategory(cat.id);
+          if (count > 0) {
+            this.showToast(`Tidak bisa dihapus — masih dipakai ${count} produk. Pindahkan dulu produknya.`);
+            return;
+          }
+          if (!confirm(`Hapus kategori "${cat.name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+          const { error } = await supabaseClient.from("categories").delete().eq("id", cat.id);
+          if (error) { this.showToast("Gagal menghapus: " + error.message); return; }
+
+          this.showToast(`Kategori "${cat.name}" dihapus.`);
+          await this.loadData();
         },
 
         // ---- CSV import ----
