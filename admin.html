@@ -989,6 +989,7 @@
         // ---- product modal ----
         productModalOpen: false,
         editingProduct: null,
+        _productSnapshot: null,
         savingProduct: false,
         formError: "",
         photoUploading: false,
@@ -1206,6 +1207,7 @@
             _originalImageUrl: null,
             prices: [this.emptyPriceRow()],
           };
+          this._productSnapshot = JSON.stringify(this.editingProduct);
           this.productModalOpen = true;
         },
 
@@ -1229,16 +1231,21 @@
             prices: (p.prices && p.prices.length ? p.prices : [{ unit: "", price_public: "", price_member: "" }])
               .map((r) => ({ _key: randKey(), unit: r.unit, price_public: r.price_public, price_member: r.price_member })),
           };
+          this._productSnapshot = JSON.stringify(this.editingProduct);
           this.productModalOpen = true;
         },
 
         closeProductModal() {
+          if (this.editingProduct && JSON.stringify(this.editingProduct) !== this._productSnapshot) {
+            if (!confirm("Perubahan belum disimpan akan hilang. Tetap tutup?")) return;
+          }
           // buang foto yang sempat diupload di sesi form ini tapi belum pernah tersimpan ke produk
           if (this.editingProduct && this.editingProduct._newUploadPath) {
             supabaseClient.storage.from("product-images").remove([this.editingProduct._newUploadPath]).catch(() => {});
           }
           this.productModalOpen = false;
           this.editingProduct = null;
+          this._productSnapshot = null;
           this.photoError = "";
         },
 
@@ -1371,6 +1378,9 @@
             if (oldPath) supabaseClient.storage.from("product-images").remove([oldPath]).catch(() => {});
           }
 
+          // Update snapshot ke kondisi yang baru saja tersimpan, supaya closeProductModal()
+          // tidak keliru menganggap ini "perubahan belum disimpan" dan menampilkan peringatan.
+          this._productSnapshot = JSON.stringify(this.editingProduct);
           this.closeProductModal();
           this.showToast(isEdit ? "Produk diperbarui." : "Produk ditambahkan.");
           await this.loadData();
