@@ -396,14 +396,15 @@
                 </div>
               </div>
             </div>
-            <div class="p-3 flex-1 flex flex-col cursor-pointer transition-colors hover:bg-[var(--surface-sunken)]/30 active:bg-[var(--surface-sunken)]/50"
+            <div class="p-3 flex-1 flex flex-col cursor-pointer transition-colors active:scale-[0.98] hover:bg-[var(--surface-sunken)]/30 active:bg-[var(--surface-sunken)]/50"
                  @click="openProductDetail(p)" role="button" tabindex="0" @keydown.enter="openProductDetail(p)" @keydown.space.prevent="openProductDetail(p)" :aria-label="'Lihat detail ' + p.name">
               <div class="flex-1 space-y-1">
                 <p class="text-[9.5px] font-bold uppercase tracking-wider text-[var(--primary-dark)]" x-text="p.category"></p>
                 <h3 class="text-[14px] font-bold text-[var(--ink)] leading-snug line-clamp-2 min-h-[2.2rem]" x-text="p.name"></h3>
               </div>
-              <div class="pt-2 mt-1">
+              <div class="pt-2 mt-1 flex items-end justify-between gap-2">
                 <p class="text-[22px] sm:text-[23px] lg:text-[24px] leading-none font-extrabold price-highlight tabular" x-show="p.prices && p.prices.length" x-text="formatRupiah(p.prices[0]?.price_public)"></p>
+                <svg class="w-4 h-4 text-[var(--ink-faint)] shrink-0 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </div>
             </div>
           </article>
@@ -425,14 +426,15 @@
               </div>
             </div>
 
-            <div class="min-w-0 flex-1 flex flex-col cursor-pointer transition-colors hover:bg-[var(--surface-sunken)]/30 active:bg-[var(--surface-sunken)]/50 -m-1 p-1 rounded-xl"
+            <div class="min-w-0 flex-1 flex flex-col cursor-pointer transition-colors active:scale-[0.98] hover:bg-[var(--surface-sunken)]/30 active:bg-[var(--surface-sunken)]/50 -m-1 p-1 rounded-xl"
                  @click="openProductDetail(p)" role="button" tabindex="0" @keydown.enter="openProductDetail(p)" @keydown.space.prevent="openProductDetail(p)" :aria-label="'Lihat detail ' + p.name">
               <div class="space-y-0.5 mb-1">
                 <p class="text-[9.5px] font-bold uppercase tracking-wider text-[var(--primary-dark)]" x-text="p.category"></p>
                 <h3 class="text-[14px] font-bold text-[var(--ink)] leading-snug line-clamp-2" x-text="p.name"></h3>
               </div>
-              <div class="mt-auto">
+              <div class="mt-auto flex items-end justify-between gap-2">
                 <p class="text-[21px] sm:text-[22px] leading-none font-extrabold price-highlight tabular" x-show="p.prices && p.prices.length" x-text="formatRupiah(p.prices[0]?.price_public)"></p>
+                <svg class="w-4 h-4 text-[var(--ink-faint)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
               </div>
             </div>
           </article>
@@ -574,7 +576,7 @@
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M9.5 4h5l1.5 2H19a2 2 0 0 1 2 2v9.5"/><path d="M20 20H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h.5"/><circle cx="12" cy="13" r="3.5"/></svg>
         </div>
         <p class="text-white font-semibold text-[15px]">Kamera tidak bisa diakses</p>
-        <p class="text-white/70 text-[13px] leading-relaxed">Hal ini sering terjadi di iOS Safari atau saat app dibuka lewat "Add to Home Screen". Kamu tetap bisa cari barang lewat nama.</p>
+        <p class="text-white/70 text-[13px] leading-relaxed" x-text="cameraErrorMessage"></p>
         <button @click="goToManualSearch()" class="mt-4 w-full py-3.5 rounded-2xl bg-white text-[var(--primary-dark)] font-bold text-[14px]">Gunakan Pencarian Teks</button>
         <button @click="startCamera()" class="mt-2.5 w-full py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-[13.5px]">Coba Lagi</button>
       </div>
@@ -584,8 +586,9 @@
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9v6M11 9v6M14 9v2M14 15v0M17 9v6"/></svg>
         </div>
         <p class="text-white font-semibold text-[15px]">Barang tidak ditemukan</p>
-        <p class="text-white/70 text-[13px] leading-relaxed">Barcode <span class="text-white font-mono" x-text="lastScannedBarcode"></span> tidak terdaftar. Cari manual via nama produk?</p>
-        <button @click="goToManualSearch()" class="mt-4 w-full py-3.5 rounded-2xl bg-white text-[var(--primary-dark)] font-bold text-[14px]">Cari Manual</button>
+        <p class="text-white/70 text-[13px] leading-relaxed">Barcode <span class="text-white font-mono" x-text="lastScannedBarcode"></span> tidak terdaftar.</p>
+        <button @click="searchByScannedBarcode()" class="mt-4 w-full py-3.5 rounded-2xl bg-white text-[var(--primary-dark)] font-bold text-[14px]">Cari Barcode Ini</button>
+        <button @click="goToManualSearch()" class="mt-2.5 w-full py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-[13.5px]">Cari Berdasarkan Nama</button>
         <button @click="resumeScanning()" class="mt-2.5 w-full py-3.5 rounded-2xl bg-white/10 text-white font-semibold text-[13.5px]">Scan Lagi</button>
       </div>
     </div>
@@ -658,6 +661,7 @@
         html5QrCode: null,
         isProcessingScan: false,
         lastScannedBarcode: "",
+        cameraErrorMessage: "",
         isTorchOn: false,
         isTorchSupported: true,
 
@@ -806,7 +810,19 @@
               ? this.allProducts.filter((p) => p.barcode && String(p.barcode).startsWith(q))
               : [];
             // Fuse search for name/alias only
-            const fuseResults = this.fuse ? this.fuse.search(q).map((r) => r.item) : [];
+            let fuseResults = this.fuse ? this.fuse.search(q).map((r) => r.item) : [];
+            // Urutkan ulang: exact name match > name starts-with > alias match > sisanya
+            // (sisanya tetap pakai urutan relevansi asli dari Fuse sebagai tie-breaker).
+            const qLower = q.toLowerCase();
+            const relevanceRank = (p) => {
+              const nameLower = (p.name || "").toLowerCase();
+              if (nameLower === qLower) return 0;
+              if (nameLower.startsWith(qLower)) return 1;
+              const aliasLower = (p.alias || "").toLowerCase();
+              if (aliasLower.includes(qLower)) return 2;
+              return 3;
+            };
+            fuseResults = fuseResults.slice().sort((a, b) => relevanceRank(a) - relevanceRank(b));
             // Merge results: barcode prefix match first, then unique fuse results
             const barcodeSet = new Set(barcodeResults.map((p) => p.id));
             const merged = [...barcodeResults, ...fuseResults.filter((p) => !barcodeSet.has(p.id))];
@@ -892,9 +908,31 @@
           this.$nextTick(() => this.startCamera());
         },
 
+        describeCameraError(err) {
+          const name = err && err.name;
+          if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+            return "Izin kamera ditolak. Buka pengaturan browser untuk mengizinkan akses kamera situs ini, lalu coba lagi.";
+          }
+          if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+            return "Tidak ada kamera yang terdeteksi di perangkat ini.";
+          }
+          if (name === "NotReadableError" || name === "TrackStartError") {
+            return "Kamera sedang dipakai aplikasi lain. Tutup aplikasi tersebut lalu coba lagi.";
+          }
+          const message = typeof err === "string" ? err : (err && err.message) || "";
+          if (message.includes("Camera streaming not supported")) {
+            return "Perangkat/browser ini tidak mendukung akses kamera langsung. Ini sering terjadi di iOS Safari atau saat app dibuka lewat \"Add to Home Screen\".";
+          }
+          return "Kamera tidak bisa diakses. Kamu tetap bisa cari barang lewat nama.";
+        },
+
         startCamera() {
           this.scannerState = "starting";
-          if (typeof Html5Qrcode === "undefined") { this.scannerState = "camera-error"; return; }
+          if (typeof Html5Qrcode === "undefined") {
+            this.cameraErrorMessage = "Komponen scanner gagal dimuat. Coba refresh halaman.";
+            this.scannerState = "camera-error";
+            return;
+          }
 
           const mountScanner = () => {
             this.html5QrCode = new Html5Qrcode("qr-reader", { verbose: false });
@@ -914,7 +952,11 @@
                   this.isTorchSupported = false;
                 }
               })
-              .catch((err) => { console.error("Gagal membuka kamera:", err); this.scannerState = "camera-error"; });
+              .catch((err) => {
+                console.error("Gagal membuka kamera:", err);
+                this.cameraErrorMessage = this.describeCameraError(err);
+                this.scannerState = "camera-error";
+              });
           };
 
           if (this.html5QrCode) {
@@ -978,6 +1020,16 @@
         resumeScanning() {
           this.scannerState = "active"; this.isProcessingScan = false;
           this.startCamera();
+        },
+
+        searchByScannedBarcode() {
+          const barcode = this.lastScannedBarcode;
+          this.closeScanner();
+          this.$nextTick(() => {
+            this.query = barcode;
+            this.runSearch();
+            this.$refs.searchInput.focus();
+          });
         },
 
         goToManualSearch() {
