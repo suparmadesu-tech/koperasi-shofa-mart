@@ -831,7 +831,8 @@
   <!-- =========================================================
        MODAL: TAMBAH / EDIT KATEGORI
   ========================================================== -->
-  <div x-show="categoryFormModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+  <template x-if="categoryFormModalOpen">
+  <div x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
     <div class="bg-[var(--surface)] rounded-2xl w-full max-w-sm">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between">
         <h2 class="text-[15.5px] font-semibold" x-text="editingCategory && editingCategory.id ? 'Edit Kategori' : 'Tambah Kategori'"></h2>
@@ -855,6 +856,10 @@
             <option value="cigarette">Rokok</option>
           </select>
         </div>
+        <label class="flex items-center gap-2 text-[13px]">
+          <input type="checkbox" x-model="editingCategory.is_quick_access" class="w-4 h-4 rounded text-[var(--primary)]" />
+          Tampilkan sebagai filter di beranda
+        </label>
         <p x-show="categoryFormError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2" x-text="categoryFormError"></p>
         <div class="flex items-center gap-2.5 pt-2">
           <button type="button" @click="closeCategoryFormModal()" class="btn-ghost flex-1">Batal</button>
@@ -866,6 +871,7 @@
       </form>
     </div>
   </div>
+  </template>
 
   <!-- =========================================================
        MODAL: RINGKASAN HASIL IMPORT KATALOG AKTIF (CSV)
@@ -1544,13 +1550,13 @@
         openAddCategory() {
           this.categoryFormError = "";
           const maxOrder = this.allCategories.reduce((max, c) => Math.max(max, c.sort_order || 0), 0);
-          this.editingCategory = { id: null, name: "", icon: "shopping-basket", sort_order: maxOrder + 1 };
+          this.editingCategory = { id: null, name: "", icon: "shopping-basket", sort_order: maxOrder + 1, is_quick_access: true };
           this.categoryFormModalOpen = true;
         },
 
         openEditCategory(cat) {
           this.categoryFormError = "";
-          this.editingCategory = { id: cat.id, name: cat.name, icon: cat.icon, sort_order: cat.sort_order };
+          this.editingCategory = { id: cat.id, name: cat.name, icon: cat.icon, sort_order: cat.sort_order, is_quick_access: !!cat.is_quick_access };
           this.categoryFormModalOpen = true;
         },
 
@@ -1568,7 +1574,7 @@
           this.categoryFormError = "";
 
           const isEdit = !!this.editingCategory.id;
-          const payload = { name, icon: this.editingCategory.icon, sort_order: this.editingCategory.sort_order };
+          const payload = { name, icon: this.editingCategory.icon, sort_order: this.editingCategory.sort_order, is_quick_access: this.editingCategory.is_quick_access };
           let error;
           if (isEdit) {
             ({ error } = await supabaseClient.from("categories").update(payload).eq("id", this.editingCategory.id));
