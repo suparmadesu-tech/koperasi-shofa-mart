@@ -20,6 +20,9 @@
 
 const CACHE_VERSION = "v9";
 
+// Timeout network-first untuk HTML navigasi (ms)
+const HTML_NAVIGATION_TIMEOUT = 3000;
+
 // Anon key yang sama dengan index.html/admin.html — dipakai untuk membedakan
 // request PUBLIK (pakai anon key) dari request AUTENTIKASI (pakai access token user).
 const SUPABASE_ANON_KEY = "sb_publishable_EKQhuybMHQGSp-Yk2tie7Q_WWnZV9iO";
@@ -104,8 +107,18 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // File same-origin (index.html, manifest, ikon, dst) — cache-first
+  // HTML navigasi (admin.html, index.html, /) — network-first dengan timeout
+  const isHtmlNavigation =
+    req.mode === "navigate" ||
+    url.pathname.endsWith(".html") ||
+    url.pathname === "/";
+
   if (url.origin === self.location.origin) {
+    if (isHtmlNavigation) {
+      event.respondWith(networkFirstHtml(req, SHELL_CACHE));
+      return;
+    }
+    // File same-origin non-HTML (manifest, ikon, CSS, dll) — cache-first
     event.respondWith(cacheFirst(req, SHELL_CACHE));
     return;
   }
@@ -154,6 +167,36 @@ async function networkFirst(request, cacheName) {
       JSON.stringify({ error: "offline_no_cache", message: "Tidak ada koneksi dan belum ada data tersimpan." }),
       { status: 503, headers: { "Content-Type": "application/json" } }
     );
+  }
+}
+
+async function networkFirstHtml(request, cacheName) {
+  let timer;
+  try {
+    const timeout = new Promise((resolve) => {
+      timer = setTimeout(() => resolve(null), HTML_NAVIGATION_TIMEOUT);
+    });
+    const response = await Promise.race([fetch(request), timeout]);
+    
+    if (!response || !response.ok) {
+      throw new Error("Network failed or timeout");
+    }
+    
+    const cache = await caches.open(cacheName);
+    cache.put(request, response.clone());
+    return response;
+  } catch (err) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    
+    // Tidak ada cache — fallback berbeda untuk admin vs user
+    const url = new URL(request.url);
+    if (url.pathname.endsWith("admin.html")) {
+      return Response.error();
+    }
+    return (await caches.match("./index.html")) || Response.error();
+  } finally {
+    clearTimeout(timer);
   }
 }
 
