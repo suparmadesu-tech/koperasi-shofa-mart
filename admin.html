@@ -135,12 +135,12 @@
 
       <form @submit.prevent="login()" class="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 space-y-3.5 shadow-xl">
         <div>
-          <label class="admin-label">Email</label>
-          <input type="email" x-model="loginEmail" required autocomplete="username" class="admin-input" placeholder="admin@shofamart.id" />
+          <label class="admin-label" for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" x-model="loginEmail" required autocomplete="username" class="admin-input" placeholder="admin@shofamart.id" />
         </div>
         <div>
-          <label class="admin-label">Password</label>
-          <input type="password" x-model="loginPassword" required autocomplete="current-password" class="admin-input" placeholder="••••••••" />
+          <label class="admin-label" for="loginPassword">Password</label>
+          <input id="loginPassword" type="password" x-model="loginPassword" required autocomplete="current-password" class="admin-input" placeholder="••••••••" />
         </div>
 
         <p x-show="loginError" x-cloak class="text-[12.5px] text-[var(--danger)] bg-[var(--danger-tint)] rounded-lg px-3 py-2 border border-[var(--danger)]/20" x-text="loginError"></p>
@@ -242,16 +242,17 @@
           type="text"
           x-model="search"
           @input.debounce.200ms="applyFilters()"
+          aria-label="Cari produk"
           placeholder="Cari nama, alias, atau barcode…"
           class="admin-input flex-1 min-w-[200px]"
         />
-        <select x-model="filterCategory" @change="applyFilters()" class="admin-input w-auto">
+        <select x-model="filterCategory" @change="applyFilters()" aria-label="Filter kategori" class="admin-input w-auto">
           <option value="">Semua Kategori</option>
           <template x-for="cat in allCategories" :key="cat.id">
             <option :value="cat.id" x-text="cat.name"></option>
           </template>
         </select>
-        <select x-model="filterStatus" @change="applyFilters()" class="admin-input w-auto">
+        <select x-model="filterStatus" @change="applyFilters()" aria-label="Filter status" class="admin-input w-auto">
           <option value="">Semua Status</option>
           <option value="active">Aktif</option>
           <option value="inactive">Nonaktif</option>
@@ -388,8 +389,8 @@
         <section class="border border-[var(--border)] rounded-xl p-3.5 space-y-3">
           <h3 class="form-section-title">Informasi Produk</h3>
           <div>
-          <label class="admin-label">Nama Produk *</label>
-          <input type="text" x-model="editingProduct.name" required class="admin-input" placeholder="mis. Indomie Goreng" />
+          <label class="admin-label" for="productName">Nama Produk *</label>
+          <input id="productName" type="text" x-model="editingProduct.name" required class="admin-input" placeholder="mis. Indomie Goreng" />
         </div>
 
         <div>
@@ -416,15 +417,15 @@
         </div>
 
         <div>
-          <label class="admin-label">Alias (pisahkan dengan koma)</label>
-          <input type="text" x-model="editingProduct.aliasText" class="admin-input" placeholder="mis. miegor, indomie" />
+          <label class="admin-label" for="productAlias">Alias (pisahkan dengan koma)</label>
+          <input id="productAlias" type="text" x-model="editingProduct.aliasText" class="admin-input" placeholder="mis. miegor, indomie" />
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="admin-label">Barcode (opsional)</label>
+            <label class="admin-label" for="productBarcode">Barcode (opsional)</label>
             <div class="flex gap-2">
-              <input type="text" x-model="editingProduct.barcode" class="admin-input flex-1" placeholder="Kosongkan jika tanpa barcode" />
+              <input id="productBarcode" type="text" x-model="editingProduct.barcode" class="admin-input flex-1" placeholder="Kosongkan jika tanpa barcode" />
               <button type="button" @click="openAdminScanner('productBarcode')"
                        class="bg-[var(--surface-sunken)] hover:bg-[var(--border)] text-[var(--ink)] border border-[var(--border-strong)] rounded-lg px-3 py-2 transition flex items-center justify-center"
                        aria-label="Scan barcode produk dengan kamera">
@@ -442,16 +443,16 @@
           <h3 class="form-section-title">Kategori & Lokasi</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="admin-label">Kategori *</label>
-              <select x-model="editingProduct.category_id" required class="admin-input">
+              <label class="admin-label" for="productCategory">Kategori *</label>
+              <select id="productCategory" x-model="editingProduct.category_id" required class="admin-input">
                 <template x-for="cat in allCategories" :key="cat.id">
                   <option :value="cat.id" x-text="cat.name"></option>
                 </template>
               </select>
             </div>
             <div>
-              <label class="admin-label">Lokasi Rak</label>
-              <input type="text" x-model="editingProduct.location_shelf" class="admin-input" placeholder="mis. Rak A1" />
+              <label class="admin-label" for="productShelf">Lokasi Rak</label>
+              <input id="productShelf" type="text" x-model="editingProduct.location_shelf" class="admin-input" placeholder="mis. Rak A1" />
             </div>
           </div>
         </section>
@@ -465,9 +466,9 @@
           <div class="space-y-2">
             <template x-for="(row, idx) in editingProduct.prices" :key="row._key">
               <div class="price-row-grid grid gap-2 items-center" style="grid-template-columns: 1.1fr 1fr 1fr auto;">
-                <input type="text" x-model="row.unit" placeholder="Satuan" class="admin-input" />
-                <input type="number" min="0" x-model="row.price_public" placeholder="Harga umum" class="admin-input" />
-                <input type="number" min="0" x-model="row.price_member" placeholder="Harga anggota" class="admin-input" />
+                <input type="text" x-model="row.unit" :aria-label="'Satuan baris ' + (idx + 1)" placeholder="Satuan" class="admin-input" />
+                <input type="number" min="0" x-model="row.price_public" :aria-label="'Harga umum baris ' + (idx + 1)" placeholder="Harga umum" class="admin-input" />
+                <input type="number" min="0" x-model="row.price_member" :aria-label="'Harga anggota baris ' + (idx + 1)" placeholder="Harga anggota" class="admin-input" />
                 <button type="button" @click="removePriceRow(idx)"
                         class="w-8 h-8 rounded-lg bg-[var(--surface-sunken)] flex items-center justify-center shrink-0"
                         :disabled="editingProduct.prices.length <= 1"
@@ -483,13 +484,13 @@
         <section class="border border-[var(--border)] rounded-xl p-3.5 space-y-3">
           <h3 class="form-section-title">Persediaan & Status</h3>
           <div>
-            <label class="admin-label">Stok (informatif, opsional)</label>
-            <input type="number" x-model="editingProduct.stock" class="admin-input" placeholder="mis. 50" />
+            <label class="admin-label" for="productStock">Stok (informatif, opsional)</label>
+            <input id="productStock" type="number" x-model="editingProduct.stock" class="admin-input" placeholder="mis. 50" />
           </div>
 
           <div>
-            <label class="admin-label">Catatan</label>
-            <textarea x-model="editingProduct.notes" rows="2" class="admin-input" placeholder="Opsional"></textarea>
+            <label class="admin-label" for="productNotes">Catatan</label>
+            <textarea id="productNotes" x-model="editingProduct.notes" rows="2" class="admin-input" placeholder="Opsional"></textarea>
           </div>
 
           <label class="flex items-center gap-2 text-[13px] pt-1">
@@ -579,7 +580,7 @@
                     <td class="px-3 py-2" x-text="c.draft.name"></td>
                     <td class="px-3 py-2 text-[var(--ink-muted)]" x-text="c.existing.name"></td>
                     <td class="px-3 py-2">
-                      <select x-model="c.action" class="admin-input !py-1 !text-[12px]">
+                      <select x-model="c.action" :aria-label="'Aksi konflik baris ' + (i + 1)" class="admin-input !py-1 !text-[12px]">
                         <option value="skip">Lewati</option>
                         <option value="overwrite">Timpa</option>
                       </select>
@@ -845,12 +846,12 @@
       </div>
       <form @submit.prevent="saveCategory()" class="px-5 py-4 space-y-3.5" x-show="editingCategory">
         <div>
-          <label class="admin-label">Nama Kategori *</label>
-          <input type="text" x-model="editingCategory.name" required class="admin-input" placeholder="mis. Minuman" />
+          <label class="admin-label" for="categoryName">Nama Kategori *</label>
+          <input id="categoryName" type="text" x-model="editingCategory.name" required class="admin-input" placeholder="mis. Minuman" />
         </div>
         <div>
-          <label class="admin-label">Ikon</label>
-          <select x-model="editingCategory.icon" class="admin-input">
+          <label class="admin-label" for="categoryIcon">Ikon</label>
+          <select id="categoryIcon" x-model="editingCategory.icon" class="admin-input">
             <option value="shopping-basket">Keranjang (umum)</option>
             <option value="cup-soda">Minuman</option>
             <option value="ice-cream-cone">Es krim</option>
