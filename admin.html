@@ -118,7 +118,8 @@
 </style>
 </head>
 
-<body class="min-h-screen bg-[var(--bg)]" x-data="adminApp()" x-init="init()">
+<body class="min-h-screen bg-[var(--bg)]" x-data="adminApp()" x-init="init()"
+      @keydown.escape.window="escapeTopModal()">
 
   <!-- =========================================================
        LOGIN VIEW
@@ -179,7 +180,8 @@
 
     <div x-show="mobileMenuOpen" x-cloak class="fixed inset-0 z-40 md:hidden" @click="mobileMenuOpen = false">
       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-      <aside class="relative w-72 max-w-[85vw] h-full bg-slate-900 text-white p-5 shadow-2xl border-r border-slate-800" @click.stop>
+      <aside class="relative w-72 max-w-[85vw] h-full bg-slate-900 text-white p-5 shadow-2xl border-r border-slate-800" @click.stop
+             role="dialog" aria-modal="true" aria-label="Menu navigasi" data-modal="mobileMenuOpen">
         <div class="flex items-center justify-between mb-8">
           <div class="flex items-center gap-2.5">
             <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-[#075985] to-[#0284C7] flex items-center justify-center shrink-0 shadow-lg">
@@ -187,7 +189,7 @@
             </div>
             <div><p class="font-bold text-[14px] text-white">Shofa Mart</p><p class="text-[11px] text-slate-400">Admin Katalog</p></div>
           </div>
-          <button type="button" @click="mobileMenuOpen = false" class="w-11 h-11 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center text-2xl" aria-label="Tutup menu">×</button>
+          <button type="button" @click="mobileMenuOpen = false" class="w-11 h-11 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center text-2xl" aria-label="Tutup menu" data-modal-close>×</button>
         </div>
         <nav class="space-y-1" aria-label="Navigasi admin mobile">
           <a href="#produk" @click="mobileMenuOpen = false" class="admin-nav-item admin-nav-active">Produk</a>
@@ -376,10 +378,11 @@
   ========================================================== -->
   <template x-if="productModalOpen">
   <div x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+         role="dialog" aria-modal="true" aria-labelledby="productModalTitle" data-modal="productModalOpen">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
-        <h2 class="text-[15.5px] font-semibold" x-text="editingProduct && editingProduct.id ? 'Edit Produk' : 'Tambah Produk'"></h2>
-        <button @click="closeProductModal()" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup modal produk">
+        <h2 id="productModalTitle" class="text-[15.5px] font-semibold" x-text="editingProduct && editingProduct.id ? 'Edit Produk' : 'Tambah Produk'"></h2>
+        <button @click="closeProductModal()" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup modal produk" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -518,10 +521,11 @@
        MODAL: REVIEW IMPORT CSV
   ========================================================== -->
   <div x-show="csvModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+         role="dialog" aria-modal="true" aria-labelledby="csvModalTitle" data-modal="csvModalOpen">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
-        <h2 class="text-[15.5px] font-semibold">Review Import CSV</h2>
-        <button @click="csvModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup import CSV">
+        <h2 id="csvModalTitle" class="text-[15.5px] font-semibold">Review Import CSV</h2>
+        <button @click="csvModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup import CSV" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -615,16 +619,17 @@
        MODAL: DATABASE MASTER PRODUK
   ========================================================== -->
   <div x-show="masterModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-3 sm:p-4">
-    <div class="relative bg-[var(--surface)] rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div class="relative bg-[var(--surface)] rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden"
+         role="dialog" aria-modal="true" aria-labelledby="masterModalTitle" data-modal="masterModalOpen">
       <div class="px-5 pt-4 pb-3 border-b border-[var(--border)] flex items-start justify-between gap-3 shrink-0 bg-slate-900 text-white">
         <div class="space-y-1 min-w-0">
           <div class="flex items-center gap-2">
-            <h2 class="text-[16px] font-bold leading-tight tracking-tight text-white">Database Master Produk</h2>
+            <h2 id="masterModalTitle" class="text-[16px] font-bold leading-tight tracking-tight text-white">Database Master Produk</h2>
             <span class="text-[10.5px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300 border border-slate-700 shrink-0">Referensi</span>
           </div>
           <p class="text-[12.5px] text-slate-300 leading-snug">Referensi nama + barcode. Pilih “Gunakan” untuk mengisi form produk katalog.</p>
         </div>
-        <button @click="masterModalOpen = false" aria-label="Tutup database master" class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
+        <button @click="masterModalOpen = false" aria-label="Tutup database master" class="w-9 h-9 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center shrink-0" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -776,15 +781,16 @@
        MODAL: KONFIRMASI IMPORT MASTER CSV
   ========================================================== -->
   <div x-show="masterConfirmModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl"
+         role="dialog" aria-modal="true" aria-labelledby="masterConfirmTitle" data-modal="masterConfirmModalOpen">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <h3 class="text-[16px] font-bold text-[var(--ink)]">Konfirmasi Import CSV Master</h3>
+          <h3 id="masterConfirmTitle" class="text-[16px] font-bold text-[var(--ink)]">Konfirmasi Import CSV Master</h3>
           <p class="text-[12.5px] text-[var(--ink-muted)] mt-1">
             Data CSV akan diimpor ke tabel <code class="text-[11.5px] bg-[var(--surface-sunken)] px-1.5 py-0.5 rounded font-mono">master_products</code>.
           </p>
         </div>
-        <button @click="masterConfirmModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0" aria-label="Tutup konfirmasi import">
+        <button @click="masterConfirmModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0" aria-label="Tutup konfirmasi import" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -806,10 +812,11 @@
        MODAL: KELOLA KATEGORI
   ========================================================== -->
   <div x-show="categoryModalOpen" x-cloak class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
+         role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle" data-modal="categoryModalOpen">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between sticky top-0 bg-[var(--surface)]">
-        <h2 class="text-[15.5px] font-semibold">Kelola Kategori</h2>
-        <button @click="categoryModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup kelola kategori">
+        <h2 id="categoryModalTitle" class="text-[15.5px] font-semibold">Kelola Kategori</h2>
+        <button @click="categoryModalOpen = false" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup kelola kategori" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -839,10 +846,11 @@
   ========================================================== -->
   <template x-if="categoryFormModalOpen">
   <div x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-sm">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-sm"
+         role="dialog" aria-modal="true" aria-labelledby="categoryFormTitle" data-modal="categoryFormModalOpen">
       <div class="px-5 pt-5 pb-3 border-b border-[var(--border)] flex items-center justify-between">
-        <h2 class="text-[15.5px] font-semibold" x-text="editingCategory && editingCategory.id ? 'Edit Kategori' : 'Tambah Kategori'"></h2>
-        <button @click="closeCategoryFormModal()" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup form kategori">
+        <h2 id="categoryFormTitle" class="text-[15.5px] font-semibold" x-text="editingCategory && editingCategory.id ? 'Edit Kategori' : 'Tambah Kategori'"></h2>
+        <button @click="closeCategoryFormModal()" class="w-7 h-7 rounded-full bg-[var(--surface-sunken)] flex items-center justify-center" aria-label="Tutup form kategori" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -883,13 +891,14 @@
        MODAL: RINGKASAN HASIL IMPORT KATALOG AKTIF (CSV)
   ========================================================== -->
   <div x-show="csvResultsModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl max-h-[85vh] overflow-y-auto"
+         role="dialog" aria-modal="true" aria-labelledby="csvResultsTitle" data-modal="csvResultsModalOpen">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <h3 class="text-[16px] font-bold text-[var(--ink)]">Import Katalog Selesai</h3>
+          <h3 id="csvResultsTitle" class="text-[16px] font-bold text-[var(--ink)]">Import Katalog Selesai</h3>
           <p class="text-[12.5px] text-[var(--ink-muted)] mt-0.5">Ringkasan hasil pemrosesan CSV Katalog Aktif.</p>
         </div>
-        <button @click="csvResultsModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0" aria-label="Tutup hasil import">
+        <button @click="csvResultsModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0" aria-label="Tutup hasil import" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -933,13 +942,14 @@
        MODAL: RINGKASAN HASIL IMPORT MASTER CSV
   ========================================================== -->
   <div x-show="masterResultsModalOpen" x-cloak class="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl">
+    <div class="bg-[var(--surface)] rounded-2xl w-full max-w-md p-5 space-y-4 shadow-xl"
+         role="dialog" aria-modal="true" aria-labelledby="masterResultsTitle" data-modal="masterResultsModalOpen">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <h3 class="text-[16px] font-bold text-[var(--ink)]">Import Master Selesai</h3>
+          <h3 id="masterResultsTitle" class="text-[16px] font-bold text-[var(--ink)]">Import Master Selesai</h3>
           <p class="text-[12.5px] text-[var(--ink-muted)] mt-0.5">Ringkasan hasil pemrosesan CSV Master Produk.</p>
         </div>
-        <button @click="masterResultsModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0" aria-label="Tutup hasil import master">
+        <button @click="masterResultsModalOpen = false" class="w-8 h-8 rounded-xl bg-[var(--surface-sunken)] hover:bg-slate-200 flex items-center justify-center shrink-0" aria-label="Tutup hasil import master" data-modal-close>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>
         </button>
       </div>
@@ -1127,6 +1137,8 @@
       return {
         // ---- navigation state ----
         mobileMenuOpen: false,
+        _focusTriggers: {},
+        _modalWatchersReady: false,
 
         // ---- auth state ----
         session: null,
@@ -1224,6 +1236,17 @@
               this.loadData();
             }
           });
+
+          if (!this._modalWatchersReady) {
+            this._modalWatchersReady = true;
+            const _modalKeys = [
+              'productModalOpen', 'csvModalOpen', 'masterModalOpen',
+              'categoryModalOpen', 'categoryFormModalOpen',
+              'masterConfirmModalOpen', 'csvResultsModalOpen',
+              'masterResultsModalOpen', 'mobileMenuOpen',
+            ];
+            _modalKeys.forEach((k) => this.$watch(k, (open) => this._onModalToggle(k, open)));
+          }
         },
 
         // ---- auth ----
@@ -1434,6 +1457,39 @@
           this.editingProduct = null;
           this._productSnapshot = null;
           this.photoError = "";
+          this.formError = "";
+        },
+
+        escapeTopModal() {
+          if (this.scannerOpen) return;
+          if (this.masterImporting || this.csvImporting) return;
+          if (this.masterResultsModalOpen)   { this.masterResultsModalOpen = false; return; }
+          if (this.csvResultsModalOpen)      { this.csvResultsModalOpen = false; return; }
+          if (this.categoryFormModalOpen)    { this.closeCategoryFormModal(); return; }
+          if (this.masterConfirmModalOpen)   { this.masterConfirmModalOpen = false; this.masterImportFile = null; return; }
+          if (this.categoryModalOpen)        { this.categoryModalOpen = false; return; }
+          if (this.masterModalOpen)          { this.masterModalOpen = false; return; }
+          if (this.csvModalOpen)             { this.csvModalOpen = false; return; }
+          if (this.productModalOpen)         { this.closeProductModal(); return; }
+          if (this.mobileMenuOpen)           { this.mobileMenuOpen = false; return; }
+        },
+
+        _onModalToggle(key, open) {
+          if (open) {
+            this._focusTriggers[key] = document.activeElement || null;
+            this.$nextTick(() => this.$nextTick(() => {
+              const btn = document.querySelector('[data-modal="' + key + '"] [data-modal-close]');
+              if (btn) btn.focus();
+            }));
+          } else {
+            const trigger = this._focusTriggers[key] || null;
+            delete this._focusTriggers[key];
+            this.$nextTick(() => {
+              if (trigger && document.contains(trigger) && typeof trigger.focus === 'function') {
+                trigger.focus();
+              }
+            });
+          }
         },
 
         addPriceRow() {
