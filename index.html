@@ -318,11 +318,11 @@
 
       <!-- View toggle -->
       <div class="flex items-center gap-1 p-1 rounded-xl bg-[var(--surface-sunken)]">
-        <button @click="setViewMode('grid')" :class="viewMode === 'grid' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
+        <button @click="setViewMode('grid')" :aria-pressed="viewMode === 'grid'" :class="viewMode === 'grid' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
                 class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan grid">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         </button>
-        <button @click="setViewMode('list')" :class="viewMode === 'list' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
+        <button @click="setViewMode('list')" :aria-pressed="viewMode === 'list'" :class="viewMode === 'list' ? 'bg-[var(--surface)] shadow-sm text-[var(--primary-dark)]' : 'text-[var(--ink-muted)]'"
                 class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" aria-label="Tampilan list">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
         </button>
