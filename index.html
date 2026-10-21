@@ -259,6 +259,7 @@
       <p x-show="scanNotice" x-cloak x-transition class="text-[11.5px] text-[var(--accent-dark)] bg-[var(--accent-tint)]/60 border border-[var(--accent)]/20 rounded-xl px-3 py-2">
         <span x-text="scanNotice"></span>
       </p>
+      <div class="sr-only" role="status" aria-live="polite" aria-atomic="true" x-text="isSearchActive ? results.length + ' hasil ditemukan' : ''"></div>
     </section>
 
     <!-- =========================================================
