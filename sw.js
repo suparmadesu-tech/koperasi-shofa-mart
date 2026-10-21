@@ -18,7 +18,7 @@
 // service worker lama otomatis dibersihkan dan versi baru dipakai.
 // =====================================================================
 
-const CACHE_VERSION = "v10";
+const CACHE_VERSION = "v11";
 
 // Timeout network-first untuk HTML navigasi (ms)
 const HTML_NAVIGATION_TIMEOUT = 3000;
